@@ -2,13 +2,14 @@
 import base64
 import json
 import re
+import shutil
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from xml.sax.saxutils import escape
 
 
-class POC03Parser(HTMLParser):
+class POC04Parser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.stack: List[Tuple[str, Dict[str, str]]] = []
@@ -155,7 +156,7 @@ def get_png_dimensions(image_path: Path) -> Tuple[Optional[int], Optional[int]]:
         return None, None
 
 
-def build_overlay_objects(parser_obj: POC03Parser, html_dir: Path) -> List[Dict[str, object]]:
+def build_overlay_objects(parser_obj: POC04Parser, html_dir: Path) -> List[Dict[str, object]]:
     objects: List[Dict[str, object]] = []
     for overlay in parser_obj.overlays:
         width, height = parse_style_dimensions(overlay.get('style', ''))
@@ -210,7 +211,7 @@ def make_drawio_xml(rows: List[List[str]], overlay_objects: List[Dict[str, objec
     xml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<mxfile host="app.diagrams.net">',
-        '  <diagram id="POC03" name="Page-1">',
+        '  <diagram id="POC04" name="Page-1">',
         '    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">',
         '      <root>',
         '        <mxCell id="0"/>',
@@ -263,11 +264,92 @@ def infer_objects_from_table(rows: List[List[str]]) -> List[Dict[str, str]]:
     return objects
 
 
+def copy_overlay_images(
+    overlay_objects: List[Dict[str, object]], html_dir: Path, output_dir: Path
+) -> Dict[str, str]:
+    copied: Dict[str, str] = {}
+    copied_dir = output_dir / 'copied_images'
+    copied_dir.mkdir(parents=True, exist_ok=True)
+
+    for overlay in overlay_objects:
+        src = overlay.get('src')
+        if not src or not isinstance(src, str) or src in copied:
+            continue
+
+        src_path = Path(src)
+        if src_path.is_absolute() or '..' in src_path.parts:
+            continue
+
+        original = html_dir / src_path
+        if not original.exists():
+            continue
+
+        destination = copied_dir / src_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(original, destination)
+        copied[src] = destination.relative_to(output_dir).as_posix()
+
+    return copied
+
+
+def build_debug_log(parser_obj: POC04Parser, overlay_objects: List[Dict[str, object]]) -> str:
+    lines: List[str] = []
+    lines.append('=== POC04 Debug Log ===')
+    lines.append('')
+    lines.append('[Images]')
+    if parser_obj.images:
+        for idx, img in enumerate(parser_obj.images, start=1):
+            lines.append(
+                f'{idx}. src={img.get("src")} alt={img.get("alt")} width={img.get("width")} height={img.get("height")} '
+                f'class={img.get("class")} parent={img.get("parent")} overlay_id={img.get("overlay_id")}'
+            )
+    else:
+        lines.append('(none)')
+    lines.append('')
+
+    lines.append('[Overlay divs]')
+    if parser_obj.overlays:
+        for idx, overlay in enumerate(parser_obj.overlays, start=1):
+            lines.append(
+                f'{idx}. id={overlay.get("id")} class={overlay.get("class")} style={overlay.get("style")}'
+            )
+    else:
+        lines.append('(none)')
+    lines.append('')
+
+    lines.append('[JS posObj]')
+    if parser_obj.pos_objs:
+        for idx, item in enumerate(parser_obj.pos_objs, start=1):
+            lines.append(
+                f'{idx}. object_id={item.get("object_id")} sheet={item.get("sheet")} row={item.get("row")} col={item.get("col")} '
+                f'x={item.get("x")} y={item.get("y")}'
+            )
+    else:
+        lines.append('(none)')
+    lines.append('')
+
+    lines.append('[Resolved overlay objects]')
+    if overlay_objects:
+        for idx, obj in enumerate(overlay_objects, start=1):
+            lines.append(
+                f'{idx}. id={obj.get("id")} src={obj.get("src")} width={obj.get("width")} height={obj.get("height")} '
+                f'x={obj.get("x")} y={obj.get("y")} row={obj.get("row")} col={obj.get("col")} '
+                f'copied_src={obj.get("copied_src")} '
+                f'style_left={obj.get("style_left")} style_top={obj.get("style_top")} '
+                f'image_actual_width={obj.get("image_actual_width")} image_actual_height={obj.get("image_actual_height")}'
+            )
+    else:
+        lines.append('(none)')
+
+    lines.append('')
+    return '\n'.join(lines)
+
+
 def process_file(html_path: Path, output_dir: Path) -> None:
     if not html_path.exists():
         raise FileNotFoundError(f'Input HTML file not found: {html_path}')
 
-    parser_obj = POC03Parser()
+    parser_obj = POC04Parser()
     parser_obj.feed(html_path.read_text(encoding='utf-8', errors='ignore'))
     parser_obj.extract_pos_objs()
 
@@ -279,11 +361,22 @@ def process_file(html_path: Path, output_dir: Path) -> None:
             f'row={obj["row"]} col={obj["col"]} style_left={obj["style_left"]} style_top={obj["style_top"]} '
             f'image_actual_width={obj["image_actual_width"]} image_actual_height={obj["image_actual_height"]}'
         )
+
+    copied_images = copy_overlay_images(overlay_objects, html_path.parent, output_dir)
+    for overlay in overlay_objects:
+        src = overlay.get('src')
+        overlay['copied_src'] = copied_images.get(src)
+
+    debug_log = build_debug_log(parser_obj, overlay_objects)
+    debug_log_path = html_path.parent / f'{html_path.stem}_debugLog.txt'
+    debug_log_path.write_text(debug_log, encoding='utf-8')
+
     image_data_uris: Dict[str, str] = {}
     for overlay in overlay_objects:
         src = overlay.get('src')
         if src and src not in image_data_uris:
-            image_path = html_path.parent / src
+            copied_src = copied_images.get(src)
+            image_path = output_dir / copied_src if copied_src else html_path.parent / src
             image_data_uri = encode_image_data(image_path)
             if image_data_uri:
                 image_data_uris[src] = image_data_uri
@@ -297,7 +390,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
     }
 
     markdown = [
-        '# POC03: HTML → AI リーダブル変換結果',
+        '# POC04: HTML → AI リーダブル変換結果',
         '',
         '## 1. 抽出テーブル',
         '',
@@ -308,7 +401,14 @@ def process_file(html_path: Path, output_dir: Path) -> None:
     ]
     if parser_obj.images:
         for img in parser_obj.images:
-            markdown.append(f'- src: `{img["src"]}` alt: `{img["alt"]}` width: `{img["width"]}` height: `{img["height"]}` parent: `{img["parent"]}`')
+            copied_src = copied_images.get(img['src'])
+            markdown.append(
+                f'- src: `{img["src"]}` copied_src: `{copied_src}` alt: `{img["alt"]}` '
+                f'width: `{img["width"]}` height: `{img["height"]}` parent: `{img["parent"]}`'
+            )
+            if copied_src:
+                label = img['alt'] or img['src']
+                markdown.append(f'  ![{label}]({copied_src})')
     else:
         markdown.append('- 画像は見つかりませんでした。')
     markdown.append('')
@@ -317,7 +417,9 @@ def process_file(html_path: Path, output_dir: Path) -> None:
     if overlay_objects:
         for overlay in overlay_objects:
             markdown.append(
-                f'- id: `{overlay["id"]}` class: `{overlay["class"]}` style: `{overlay["style"]}` width: `{overlay["width"]}` height: `{overlay["height"]}` x: `{overlay["x"]}` y: `{overlay["y"]}` row: `{overlay["row"]}` col: `{overlay["col"]}` src: `{overlay["src"]}`'
+                f'- id: `{overlay["id"]}` class: `{overlay["class"]}` style: `{overlay["style"]}` '
+                f'width: `{overlay["width"]}` height: `{overlay["height"]}` x: `{overlay["x"]}` y: `{overlay["y"]}` '
+                f'row: `{overlay["row"]}` col: `{overlay["col"]}` src: `{overlay["src"]}` copied_src: `{overlay["copied_src"]}`'
             )
     else:
         markdown.append('- 埋め込みオブジェクトは見つかりませんでした。')
@@ -343,7 +445,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
         for obj in objects:
             markdown.append(f'  - {obj["label"]} (想定サイズ {obj["width"]}x{obj["height"]})')
         markdown.append('')
-        markdown.append('Draw.io XML は `poc03_drawio_hints.dio` / `poc03_drawio_hints.svg.dio` に出力しています。')
+        markdown.append('Draw.io XML は `poc04_drawio_hints.dio` / `poc04_drawio_hints.svg.dio` に出力しています。')
     else:
         markdown.append('- 図形候補は表データから抽出できませんでした。')
         markdown.append('- 埋め込みオブジェクト画像はそのまま保持し、GUI で補正する運用を想定します。')
@@ -362,6 +464,11 @@ def process_file(html_path: Path, output_dir: Path) -> None:
 
     print(f'Wrote POC Markdown: {md_path}')
     print(f'Wrote POC JSON: {json_path}')
+    print(f'Wrote debug log: {debug_log_path}')
+    if copied_images:
+        print('Copied image assets:')
+        for original_src, copied_src in copied_images.items():
+            print(f'  - {original_src} -> {copied_src}')
     print('Wrote Draw.io hints:')
     for path in drawio_paths:
         print(f'  - {path}')
@@ -369,7 +476,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
 
 def main() -> None:
     input_dir = Path('/Users/sakiyama/Desktop/excel→md/doc/30.test/testData/Excel_sampleData')
-    output_dir = Path('/Users/sakiyama/Desktop/excel→md/doc/20.InternalDesign/00.POC/03/test_output')
+    output_dir = Path('/Users/sakiyama/Desktop/excel→md/doc/20.InternalDesign/00.POC/04/test_output')
 
     if not input_dir.exists() or not input_dir.is_dir():
         raise FileNotFoundError(f'Input directory not found: {input_dir}')
