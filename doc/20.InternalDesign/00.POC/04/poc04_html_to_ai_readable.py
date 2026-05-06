@@ -197,15 +197,16 @@ def build_overlay_objects(parser_obj: POC04Parser, html_dir: Path) -> List[Dict[
     return objects
 
 
-def encode_image_data(image_path: Path) -> Optional[str]:
+def encode_image_data_for_drawio(image_path: Path) -> Optional[str]:
     if not image_path.exists():
         return None
     data = image_path.read_bytes()
     b64 = base64.b64encode(data).decode('ascii')
-    return f'data:image/png;base64,{b64}'
+    # Draw.io style parser uses ';' as separators, so omit ';base64' here.
+    return f'data:image/png,{b64}'
 
 
-def make_drawio_xml(rows: List[List[str]], overlay_objects: List[Dict[str, object]], image_data_uris: Dict[str, str]) -> str:
+def make_drawio_xml(rows: List[List[str]], overlay_objects: List[Dict[str, object]], image_values: Dict[str, str]) -> str:
     base_x = 100
     base_y = 40
     xml = [
@@ -230,14 +231,14 @@ def make_drawio_xml(rows: List[List[str]], overlay_objects: List[Dict[str, objec
 
     for overlay in overlay_objects:
         src = overlay.get('src')
-        data_uri = image_data_uris.get(src) if src else None
-        if not data_uri:
+        image_value = image_values.get(src) if src else None
+        if not image_value:
             continue
         width = overlay.get('width') or 520
         height = overlay.get('height') or 215
         x = overlay.get('x') if overlay.get('x') is not None else base_x
         y = overlay.get('y') if overlay.get('y') is not None else base_y + 320
-        image_style = f'shape=image;image={data_uri};html=1;verticalLabelPosition=bottom;verticalAlign=top;'
+        image_style = f'shape=image;image={image_value};html=1;verticalLabelPosition=bottom;verticalAlign=top;'
         xml.append(f'        <mxCell id="{cell_id}" value="" style="{image_style}" vertex="1" parent="1">')
         xml.append(f'          <mxGeometry x="{x}" y="{y}" width="{width}" height="{height}" as="geometry"/>')
         xml.append('        </mxCell>')
@@ -377,7 +378,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
         if src and src not in image_data_uris:
             copied_src = copied_images.get(src)
             image_path = output_dir / copied_src if copied_src else html_path.parent / src
-            image_data_uri = encode_image_data(image_path)
+            image_data_uri = encode_image_data_for_drawio(image_path)
             if image_data_uri:
                 image_data_uris[src] = image_data_uri
 
@@ -455,12 +456,15 @@ def process_file(html_path: Path, output_dir: Path) -> None:
     json_path = output_dir / f'{stem}_summary.json'
     drawio_base = output_dir / f'{stem}_drawio_hints'
     drawio_paths = [drawio_base.with_suffix('.dio'), drawio_base.with_suffix('.svg.dio')]
+    drawio_linked_path = output_dir / f'{stem}_drawio_hints.xml'
 
     md_path.write_text('\n'.join(markdown), encoding='utf-8')
     json_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
     drawio_xml = make_drawio_xml(parser_obj.table_rows, overlay_objects, image_data_uris)
+    drawio_linked_xml = make_drawio_xml(parser_obj.table_rows, overlay_objects, image_data_uris)
     for path in drawio_paths:
         path.write_text(drawio_xml, encoding='utf-8')
+    drawio_linked_path.write_text(drawio_linked_xml, encoding='utf-8')
 
     print(f'Wrote POC Markdown: {md_path}')
     print(f'Wrote POC JSON: {json_path}')
@@ -472,6 +476,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
     print('Wrote Draw.io hints:')
     for path in drawio_paths:
         print(f'  - {path}')
+    print(f'  - {drawio_linked_path}')
 
 
 def main() -> None:
