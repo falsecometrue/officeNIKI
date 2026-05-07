@@ -226,7 +226,7 @@ def make_drawio_xml(rows: List[List[str]], overlay_objects: List[Dict[str, objec
 
     if rows:
         label_html = table_to_html_label(rows)
-        style = 'rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;'
+        style = 'rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=none;'
         escaped_html = escape(label_html, {'"': '&quot;'})
         xml.append(f'        <mxCell id="{cell_id}" value="{escaped_html}" style="{style}" vertex="1" parent="1">')
         xml.append(
