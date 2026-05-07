@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 from xml.sax.saxutils import escape
 
 
-class POC04Parser(HTMLParser):
+class POC05Parser(HTMLParser):
     def __init__(self):
         super().__init__()
         self.stack: List[Tuple[str, Dict[str, str]]] = []
@@ -156,7 +156,7 @@ def get_png_dimensions(image_path: Path) -> Tuple[Optional[int], Optional[int]]:
         return None, None
 
 
-def build_overlay_objects(parser_obj: POC04Parser, html_dir: Path) -> List[Dict[str, object]]:
+def build_overlay_objects(parser_obj: POC05Parser, html_dir: Path) -> List[Dict[str, object]]:
     objects: List[Dict[str, object]] = []
     for overlay in parser_obj.overlays:
         width, height = parse_style_dimensions(overlay.get('style', ''))
@@ -216,7 +216,7 @@ def make_drawio_xml(rows: List[List[str]], overlay_objects: List[Dict[str, objec
     xml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<mxfile host="app.diagrams.net">',
-        '  <diagram id="POC04" name="Page-1">',
+        '  <diagram id="POC05" name="Page-1">',
         '    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">',
         '      <root>',
         '        <mxCell id="0"/>',
@@ -300,9 +300,9 @@ def copy_overlay_images(
     return copied
 
 
-def build_debug_log(parser_obj: POC04Parser, overlay_objects: List[Dict[str, object]]) -> str:
+def build_debug_log(parser_obj: POC05Parser, overlay_objects: List[Dict[str, object]]) -> str:
     lines: List[str] = []
-    lines.append('=== POC04 Debug Log ===')
+    lines.append('=== POC05 Debug Log ===')
     lines.append('')
     lines.append('[Images]')
     if parser_obj.images:
@@ -357,7 +357,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
     if not html_path.exists():
         raise FileNotFoundError(f'Input HTML file not found: {html_path}')
 
-    parser_obj = POC04Parser()
+    parser_obj = POC05Parser()
     parser_obj.feed(html_path.read_text(encoding='utf-8', errors='ignore'))
     parser_obj.extract_pos_objs()
 
@@ -398,7 +398,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
     }
 
     markdown = [
-        '# POC04: HTML → AI リーダブル変換結果',
+        '# POC05: HTML → AI リーダブル変換結果',
         '',
         '## 1. 抽出テーブル',
         '',
@@ -491,7 +491,7 @@ def process_file(html_path: Path, output_dir: Path) -> None:
 
 def main() -> None:
     input_dir = Path('/Users/sakiyama/Desktop/excel→md/doc/30.test/testData/Excel_sampleData')
-    output_dir = Path('/Users/sakiyama/Desktop/excel→md/doc/20.InternalDesign/00.POC/04/test_output')
+    output_dir = Path('/Users/sakiyama/Desktop/excel→md/doc/20.InternalDesign/00.POC/05/test_output')
 
     if not input_dir.exists() or not input_dir.is_dir():
         raise FileNotFoundError(f'Input directory not found: {input_dir}')

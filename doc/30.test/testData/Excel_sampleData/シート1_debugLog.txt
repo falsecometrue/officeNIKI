@@ -1,4 +1,4 @@
-=== POC04 Debug Log ===
+=== POC05 Debug Log ===
 
 [Images]
 1. src=resources/drawing0.png alt= width=698 height=215 class= parent=div overlay_id=embed_2068220731
