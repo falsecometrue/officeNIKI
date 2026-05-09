@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from xml.etree import ElementTree as ET
-from xml.sax.saxutils import quoteattr
+from xml.sax.saxutils import escape, quoteattr
 
 
 NS = {
@@ -553,8 +553,7 @@ def cell_geometry(cell: Dict[str, object], col_widths: Dict[int, float], row_hei
 
 def drawio_cell_style(cell: Dict[str, object], styles: Dict[int, Dict[str, object]]) -> str:
     style = styles.get(int(cell.get("style_id", 0)), {})
-    has_table_style = bool(style.get("apply_border") or style.get("fill_color"))
-    if has_table_style:
+    if is_table_cell(cell, styles):
         fill = style.get("fill_color") or "#FFFFFF"
         stroke = style.get("border_color") or "#000000"
         return (
@@ -569,11 +568,127 @@ def drawio_cell_style(cell: Dict[str, object], styles: Dict[int, Dict[str, objec
     )
 
 
+def is_table_cell(cell: Dict[str, object], styles: Dict[int, Dict[str, object]]) -> bool:
+    style = styles.get(int(cell.get("style_id", 0)), {})
+    return bool(style.get("apply_border") or style.get("fill_color"))
+
+
+def find_table_components(cells: List[Dict[str, object]], styles: Dict[int, Dict[str, object]]) -> List[List[Dict[str, object]]]:
+    table_cells = {
+        (int(cell["row"]), int(cell["col"])): cell
+        for cell in cells
+        if is_table_cell(cell, styles)
+    }
+    visited = set()
+    components: List[List[Dict[str, object]]] = []
+    for key in table_cells:
+        if key in visited:
+            continue
+        stack = [key]
+        visited.add(key)
+        component = []
+        while stack:
+            row, col = stack.pop()
+            component.append(table_cells[(row, col)])
+            for neighbor in ((row - 1, col), (row + 1, col), (row, col - 1), (row, col + 1)):
+                if neighbor in table_cells and neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+        components.append(component)
+    return components
+
+
+def table_geometry(component: List[Dict[str, object]], col_widths: Dict[int, float], row_heights: Dict[int, float]) -> Dict[str, float]:
+    rows = [int(cell["row"]) for cell in component]
+    cols = [int(cell["col"]) for cell in component]
+    min_row, max_row = min(rows), max(rows)
+    min_col, max_col = min(cols), max(cols)
+    top_left = cell_geometry({"row": min_row, "col": min_col}, col_widths, row_heights)
+    width = sum(col_widths.get(col, excel_col_width_to_px(DEFAULT_COL_WIDTH)) for col in range(min_col, max_col + 1))
+    height = sum(row_heights.get(row, excel_row_height_to_px(DEFAULT_ROW_HEIGHT_PT)) for row in range(min_row, max_row + 1))
+    return {
+        "x": top_left["x"],
+        "y": top_left["y"],
+        "width": round(width, 2),
+        "height": round(height, 2),
+        "min_row": min_row,
+        "max_row": max_row,
+        "min_col": min_col,
+        "max_col": max_col,
+    }
+
+
+def html_td_style(cell: Optional[Dict[str, object]], styles: Dict[int, Dict[str, object]], width: float, height: float) -> str:
+    style = styles.get(int(cell.get("style_id", 0)), {}) if cell else {}
+    fill = style.get("fill_color") or "#FFFFFF"
+    stroke = style.get("border_color") or "#000000"
+    return (
+        f"border:1px solid {stroke};"
+        f"background:{fill};"
+        "text-align:center;"
+        "vertical-align:middle;"
+        f"width:{width}px;"
+        f"height:{height}px;"
+        "font-size:11px;"
+        "padding:0;"
+        "box-sizing:border-box;"
+    )
+
+
+def build_html_table(component: List[Dict[str, object]], styles: Dict[int, Dict[str, object]], col_widths: Dict[int, float], row_heights: Dict[int, float]) -> str:
+    geometry = table_geometry(component, col_widths, row_heights)
+    by_position = {
+        (int(cell["row"]), int(cell["col"])): cell
+        for cell in component
+    }
+    lines = [
+        '<table style="border-collapse:collapse;table-layout:fixed;width:100%;height:100%;font-family:Arial,sans-serif;">'
+    ]
+    for row in range(int(geometry["min_row"]), int(geometry["max_row"]) + 1):
+        row_height = row_heights.get(row, excel_row_height_to_px(DEFAULT_ROW_HEIGHT_PT))
+        lines.append("<tr>")
+        for col in range(int(geometry["min_col"]), int(geometry["max_col"]) + 1):
+            col_width = col_widths.get(col, excel_col_width_to_px(DEFAULT_COL_WIDTH))
+            cell = by_position.get((row, col))
+            value = escape(str(cell.get("value", ""))) if cell else ""
+            style = html_td_style(cell, styles, col_width, row_height)
+            lines.append(f'<td style="{style}">{value}</td>')
+        lines.append("</tr>")
+    lines.append("</table>")
+    return "".join(lines)
+
+
+def append_html_table_vertices(
+    xml_cells: List[str],
+    sheet: Dict[str, object],
+    styles: Dict[int, Dict[str, object]],
+    col_widths: Dict[int, float],
+    row_heights: Dict[int, float],
+) -> set:
+    table_cell_refs = set()
+    for index, component in enumerate(find_table_components(sheet.get("cells", []), styles), start=1):
+        if not component:
+            continue
+        geometry = table_geometry(component, col_widths, row_heights)
+        html = build_html_table(component, styles, col_widths, row_heights)
+        table_id = f'table-{int(geometry["min_row"])}-{int(geometry["min_col"])}-{int(geometry["max_row"])}-{int(geometry["max_col"])}'
+        value = quoteattr(html)
+        style = quoteattr("html=1;whiteSpace=wrap;overflow=fill;rounded=0;fillColor=none;strokeColor=none;")
+        xml_cells.append(f'        <mxCell id="{table_id}" value={value} style={style} vertex="1" parent="1">')
+        xml_cells.append(f'          <mxGeometry x="{geometry["x"]}" y="{geometry["y"]}" width="{geometry["width"]}" height="{geometry["height"]}" as="geometry"/>')
+        xml_cells.append("        </mxCell>")
+        table_cell_refs.update(str(cell["ref"]) for cell in component)
+    return table_cell_refs
+
+
 def append_cell_vertices(xml_cells: List[str], sheet: Dict[str, object]) -> None:
     styles = {int(style["style_id"]): style for style in sheet.get("styles", [])}
     col_widths = col_width_map(sheet)
     row_heights = row_height_map(sheet)
+    table_cell_refs = append_html_table_vertices(xml_cells, sheet, styles, col_widths, row_heights)
     for cell in sheet.get("cells", []):
+        if str(cell["ref"]) in table_cell_refs:
+            continue
         geometry = cell_geometry(cell, col_widths, row_heights)
         cell_id = f"cell-{cell['ref']}"
         value = quoteattr(str(cell.get("value", "")))
@@ -616,9 +731,8 @@ def append_image_vertices(xml_cells: List[str], sheet: Dict[str, object]) -> Non
         if image.get("kind") != "image":
             continue
         cell_id = f"image-{image['id']}"
-        value = quoteattr(str(image.get("name", "")))
         style = quoteattr(f"shape=image;html=1;imageAspect=0;aspect=fixed;image={image.get('data_uri', '')};")
-        xml_cells.append(f'        <mxCell id="{cell_id}" value={value} style={style} vertex="1" parent="1">')
+        xml_cells.append(f'        <mxCell id="{cell_id}" value="" style={style} vertex="1" parent="1">')
         xml_cells.append(f'          <mxGeometry x="{image.get("x", 0)}" y="{image.get("y", 0)}" width="{image.get("width", 120)}" height="{image.get("height", 80)}" as="geometry"/>')
         xml_cells.append("        </mxCell>")
 

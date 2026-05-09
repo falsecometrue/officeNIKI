@@ -160,10 +160,19 @@ _rels/.rels
 
 ### 7.3 表
 
-表は2段階で進める。
+現在の実装では、罫線または塗りがある連続セル範囲を1つのHTML tableラベルとしてDraw.ioへ出力する。
 
-1. POC段階: `cells` からDraw.io上にセルグリッドを生成する。
-2. 改善段階: 罫線、列幅、行高、セル結合、塗り色を `styles` と `merged_cells` から再現する。
+```xml
+<mxCell id="table-17-2-20-5"
+        value="&lt;table ...&gt;...&lt;/table&gt;"
+        style="html=1;whiteSpace=wrap;overflow=fill;rounded=0;fillColor=none;strokeColor=none;"
+        vertex="1"
+        parent="1">
+  <mxGeometry x="133.41" y="376" width="710.48" height="84" as="geometry"/>
+</mxCell>
+```
+
+表に含まれない通常セルは、背景透明・枠線なしのテキストとして個別に出力する。
 
 今回のサンプルでは表データが説明表として機能しているため、図形変換の検証には `drawing1.xml` を主軸にする。
 
