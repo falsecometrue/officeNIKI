@@ -5,6 +5,7 @@ import json
 import posixpath
 import re
 import zipfile
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from xml.etree import ElementTree as ET
@@ -66,6 +67,8 @@ def read_relationships(package: zipfile.ZipFile, name: str) -> Dict[str, Dict[st
 
 
 def resolve_package_path(base_file: str, target: str) -> str:
+    if target.startswith("/"):
+        return target.lstrip("/")
     base_dir = posixpath.dirname(base_file)
     return posixpath.normpath(posixpath.join(base_dir, target))
 
@@ -99,18 +102,58 @@ def parse_workbook(package: zipfile.ZipFile) -> List[Dict[str, str]]:
     return sheets
 
 
+def display_value_from_raw(cell_type: str, raw_value: str, shared_strings: List[str]) -> str:
+    if cell_type == "s" and raw_value:
+        return shared_strings[int(raw_value)]
+    if cell_type == "n" and raw_value:
+        try:
+            number = Decimal(raw_value)
+        except InvalidOperation:
+            return raw_value
+        if number == number.to_integral_value():
+            return str(number.quantize(Decimal("1")))
+    return raw_value
+
+
+def normalize_rgb(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    rgb = value[-6:]
+    if len(rgb) != 6:
+        return None
+    return f"#{rgb}"
+
+
 # styles.xml cellXfs are referenced from sheet cells by style_id.
 def parse_styles(package: zipfile.ZipFile) -> List[Dict[str, object]]:
     if "xl/styles.xml" not in package.namelist():
         return []
     root = read_xml(package, "xl/styles.xml")
+    fills = []
+    for fill in root.findall("main:fills/main:fill", NS):
+        fg_color = fill.find(".//main:fgColor", NS)
+        fills.append({
+            "color": normalize_rgb(fg_color.attrib.get("rgb")) if fg_color is not None else None,
+        })
+    borders = []
+    for border in root.findall("main:borders/main:border", NS):
+        border_color = None
+        for side_name in ("left", "right", "top", "bottom"):
+            side = border.find(f"main:{side_name}", NS)
+            color = side.find("main:color", NS) if side is not None else None
+            border_color = normalize_rgb(color.attrib.get("rgb")) if color is not None else border_color
+        borders.append({"color": border_color})
     styles = []
     for index, xf in enumerate(root.findall("main:cellXfs/main:xf", NS)):
+        fill_id = int(xf.attrib.get("fillId", "0"))
+        border_id = int(xf.attrib.get("borderId", "0"))
         styles.append({
             "style_id": index,
             "font_id": int(xf.attrib.get("fontId", "0")),
-            "fill_id": int(xf.attrib.get("fillId", "0")),
-            "border_id": int(xf.attrib.get("borderId", "0")),
+            "fill_id": fill_id,
+            "fill_color": fills[fill_id]["color"] if fill_id < len(fills) else None,
+            "border_id": border_id,
+            "border_color": borders[border_id]["color"] if border_id < len(borders) else None,
             "num_fmt_id": int(xf.attrib.get("numFmtId", "0")),
             "apply_border": xf.attrib.get("applyBorder") == "1",
             "apply_alignment": xf.attrib.get("applyAlignment") == "1",
@@ -141,9 +184,7 @@ def parse_cells(sheet_root: ET.Element, shared_strings: List[str]) -> Tuple[List
             col_index, row_number = split_cell_ref(ref)
             raw_value = cell.findtext("main:v", default="", namespaces=NS)
             cell_type = cell.attrib.get("t", "n")
-            value = raw_value
-            if cell_type == "s" and raw_value:
-                value = shared_strings[int(raw_value)]
+            value = display_value_from_raw(cell_type, raw_value, shared_strings)
             cells.append({
                 "ref": ref,
                 "row": row_number,
@@ -175,6 +216,14 @@ def find_color(node: ET.Element, path: str) -> Optional[str]:
     if color is None:
         return None
     return f"#{color.attrib['val']}"
+
+
+def image_data_uri(package: zipfile.ZipFile, image_path: str) -> str:
+    suffix = Path(image_path).suffix.lower().lstrip(".")
+    mime = "jpeg" if suffix in {"jpg", "jpeg"} else suffix or "octet-stream"
+    data = base64.b64encode(package.read(image_path)).decode("ascii")
+    # Draw.io style values are separated by semicolons, so avoid the usual ";base64" marker.
+    return f"data:image/{mime},{data}"
 
 
 def excel_col_width_to_px(width: float) -> float:
@@ -324,15 +373,46 @@ def parse_drawing_shape(node: ET.Element, anchor_info: Dict[str, object], group_
     return shape
 
 
+def parse_drawing_picture(
+    package: zipfile.ZipFile,
+    node: ET.Element,
+    anchor_info: Dict[str, object],
+    drawing_rels: Dict[str, Dict[str, str]],
+    drawing_path: str,
+    picture_index: int,
+) -> Dict[str, object]:
+    nv = node.find(".//xdr:cNvPr", NS)
+    blip = node.find(".//a:blip", NS)
+    rel_id = blip.attrib.get(f"{{{NS['r']}}}embed") if blip is not None else ""
+    target = drawing_rels.get(rel_id, {}).get("target", "")
+    image_path = resolve_package_path(drawing_path, target) if target else ""
+    ext = anchor_info.get("ext") or {}
+    return {
+        "id": f"pic-{picture_index}",
+        "name": nv.attrib.get("name") if nv is not None else "",
+        "kind": "image",
+        "rel_id": rel_id,
+        "path": image_path,
+        "x": anchor_info.get("x", 0),
+        "y": anchor_info.get("y", 0),
+        "width": ext.get("width", 120),
+        "height": ext.get("height", 80),
+        "data_uri": image_data_uri(package, image_path) if image_path else "",
+    }
+
+
 # drawing*.xml can contain anchors, grouped shapes, connectors, and pictures.
 def parse_drawings(package: zipfile.ZipFile, drawing_path: str, rows: List[Dict[str, object]], cols: List[Dict[str, object]]) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
     if drawing_path not in package.namelist():
         return [], []
     root = read_xml(package, drawing_path)
+    rel_path = f"{posixpath.dirname(drawing_path)}/_rels/{posixpath.basename(drawing_path)}.rels"
+    drawing_rels = read_relationships(package, rel_path)
     col_widths = col_width_map_from_cols(cols)
     row_heights = row_height_map_from_rows(rows)
     anchors = []
     drawings = []
+    picture_index = 1
     for anchor in list(root):
         if not anchor.tag.endswith(("oneCellAnchor", "twoCellAnchor", "absoluteAnchor")):
             continue
@@ -341,15 +421,19 @@ def parse_drawings(package: zipfile.ZipFile, drawing_path: str, rows: List[Dict[
         for child in list(anchor):
             if child.tag.endswith("sp") or child.tag.endswith("cxnSp") or child.tag.endswith("pic"):
                 if child.tag.endswith("pic"):
-                    continue
-                drawings.append(parse_drawing_shape(child, anchor_info))
+                    drawings.append(parse_drawing_picture(package, child, anchor_info, drawing_rels, drawing_path, picture_index))
+                    picture_index += 1
+                else:
+                    drawings.append(parse_drawing_shape(child, anchor_info))
             elif child.tag.endswith("grpSp"):
                 group_transform = parse_group_transform(child)
                 for group_child in list(child):
                     if group_child.tag.endswith("sp") or group_child.tag.endswith("cxnSp") or group_child.tag.endswith("pic"):
                         if group_child.tag.endswith("pic"):
-                            continue
-                        drawings.append(parse_drawing_shape(group_child, anchor_info, group_transform))
+                            drawings.append(parse_drawing_picture(package, group_child, anchor_info, drawing_rels, drawing_path, picture_index))
+                            picture_index += 1
+                        else:
+                            drawings.append(parse_drawing_shape(group_child, anchor_info, group_transform))
     infer_edge_sources(drawings)
     return drawings, anchors
 
@@ -419,9 +503,12 @@ def build_intermediate(xlsx_path: Path) -> Dict[str, object]:
             for rel in sheet_rels.values():
                 if rel["type"].endswith("/drawing"):
                     drawing_path = resolve_package_path(sheet_def["path"], rel["target"])
-                    drawings, anchors = parse_drawings(package, drawing_path, rows, cols)
+                    drawing_items, anchor_items = parse_drawings(package, drawing_path, rows, cols)
+                    drawings.extend(drawing_items)
+                    anchors.extend(anchor_items)
             sheets.append({
                 "name": sheet_def["name"],
+                "sheet_id": sheet_def["sheet_id"],
                 "path": sheet_def["path"],
                 "rows": rows,
                 "cols": cols,
@@ -466,11 +553,18 @@ def cell_geometry(cell: Dict[str, object], col_widths: Dict[int, float], row_hei
 
 def drawio_cell_style(cell: Dict[str, object], styles: Dict[int, Dict[str, object]]) -> str:
     style = styles.get(int(cell.get("style_id", 0)), {})
-    stroke = "#000000" if style.get("apply_border") else "#D9D9D9"
+    has_table_style = bool(style.get("apply_border") or style.get("fill_color"))
+    if has_table_style:
+        fill = style.get("fill_color") or "#FFFFFF"
+        stroke = style.get("border_color") or "#000000"
+        return (
+            "rounded=0;whiteSpace=wrap;html=1;"
+            f"fillColor={fill};strokeColor={stroke};"
+            "align=center;verticalAlign=middle;fontSize=11;"
+        )
     return (
-        "rounded=0;whiteSpace=wrap;html=1;"
-        "fillColor=#FFFFFF;"
-        f"strokeColor={stroke};"
+        "text;html=1;"
+        "fillColor=none;strokeColor=none;"
         "align=center;verticalAlign=middle;fontSize=11;"
     )
 
@@ -517,25 +611,50 @@ def append_drawing_edges(xml_cells: List[str], sheet: Dict[str, object]) -> None
         xml_cells.append("        </mxCell>")
 
 
-# Intermediate JSON -> Draw.io XML. This reflects extracted cells, shapes, and edges.
-def make_drawio(intermediate: Dict[str, object]) -> str:
-    sheet = intermediate["sheets"][0]
+def append_image_vertices(xml_cells: List[str], sheet: Dict[str, object]) -> None:
+    for image in sheet.get("drawings", []):
+        if image.get("kind") != "image":
+            continue
+        cell_id = f"image-{image['id']}"
+        value = quoteattr(str(image.get("name", "")))
+        style = quoteattr(f"shape=image;html=1;imageAspect=0;aspect=fixed;image={image.get('data_uri', '')};")
+        xml_cells.append(f'        <mxCell id="{cell_id}" value={value} style={style} vertex="1" parent="1">')
+        xml_cells.append(f'          <mxGeometry x="{image.get("x", 0)}" y="{image.get("y", 0)}" width="{image.get("width", 120)}" height="{image.get("height", 80)}" as="geometry"/>')
+        xml_cells.append("        </mxCell>")
+
+
+def drawio_diagram_xml(sheet: Dict[str, object], index: int) -> List[str]:
+    sheet_name = str(sheet.get("name") or f"Sheet{index}")
+    diagram_id = quoteattr(f"POC06-{index}")
+    diagram_name = quoteattr(sheet_name)
     cells = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<mxfile host="app.diagrams.net">',
-        '  <diagram id="POC06" name="Page-1">',
+        f"  <diagram id={diagram_id} name={diagram_name}>",
         '    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">',
         '      <root>',
         '        <mxCell id="0"/>',
         '        <mxCell id="1" parent="0"/>',
     ]
     append_cell_vertices(cells, sheet)
+    append_image_vertices(cells, sheet)
     append_drawing_vertices(cells, sheet)
     append_drawing_edges(cells, sheet)
     cells.extend([
         "      </root>",
         "    </mxGraphModel>",
         "  </diagram>",
+    ])
+    return cells
+
+
+# Intermediate JSON -> Draw.io XML. Each Excel sheet becomes one Draw.io page.
+def make_drawio(intermediate: Dict[str, object]) -> str:
+    cells = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<mxfile host="app.diagrams.net">',
+    ]
+    for index, sheet in enumerate(intermediate.get("sheets", []), start=1):
+        cells.extend(drawio_diagram_xml(sheet, index))
+    cells.extend([
         "</mxfile>",
     ])
     return "\n".join(cells)
@@ -544,11 +663,13 @@ def make_drawio(intermediate: Dict[str, object]) -> str:
 # CLI entrypoint for repeatable POC runs.
 def main() -> None:
     script_dir = Path(__file__).resolve().parent
-    default_input = script_dir.parents[2] / "30.test" / "testData" / "テストデータ.xlsx"
+    default_input = script_dir.parents[2] / "30.test" / "00.pocTestData" / "テストデータ.xlsx"
+    if not default_input.exists():
+        default_input = script_dir.parents[2] / "30.test" / "testData" / "テストデータ.xlsx"
     parser = argparse.ArgumentParser(description="POC06: xlsx zip XML to intermediate JSON and Draw.io")
     parser.add_argument("--input", type=Path, default=default_input)
     parser.add_argument("--json", type=Path, default=script_dir / "poc06_intermediate.json")
-    parser.add_argument("--drawio", type=Path, default=script_dir / "poc06_output.drawio")
+    parser.add_argument("--drawio", type=Path, default=script_dir / "poc06_output.xml")
     args = parser.parse_args()
 
     intermediate = build_intermediate(args.input)

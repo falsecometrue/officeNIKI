@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mxfile host="app.diagrams.net">
-  <diagram id="POC06" name="Page-1">
+  <diagram id="POC06-1" name="シート1">
     <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
+        <mxCell id="sheet-title" value="シート1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="8" width="300" height="24" as="geometry"/>
+        </mxCell>
         <mxCell id="cell-A1" value="サンプルテスト" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D9D9D9;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="40" y="40" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
@@ -20,7 +23,7 @@
         <mxCell id="cell-E17" value="memo" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="633.23" y="376.0" width="210.66" height="21.0" as="geometry"/>
         </mxCell>
-        <mxCell id="cell-B18" value="1.0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="cell-B18" value="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="133.41" y="397.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-C18" value="オブジェクトA" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
@@ -32,7 +35,7 @@
         <mxCell id="cell-E18" value="-" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="633.23" y="397.0" width="210.66" height="21.0" as="geometry"/>
         </mxCell>
-        <mxCell id="cell-B19" value="2.0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="cell-B19" value="2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="133.41" y="418.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-C19" value="右矢印" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
@@ -44,7 +47,7 @@
         <mxCell id="cell-E19" value="細" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="633.23" y="418.0" width="210.66" height="21.0" as="geometry"/>
         </mxCell>
-        <mxCell id="cell-B20" value="3.0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="cell-B20" value="3" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="133.41" y="439.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-C20" value="オブジェクトB" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">

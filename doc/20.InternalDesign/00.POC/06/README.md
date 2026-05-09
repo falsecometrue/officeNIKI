@@ -181,7 +181,9 @@ _rels/.rels
 `poc06_xlsx_zip_to_drawio.py` は、`テストデータ.xlsx` をzipとして直接読み、以下を生成する。
 
 - `poc06_intermediate.json`: 実解析結果の中間JSON
-- `poc06_output.drawio`: 中間JSONから生成したDraw.io XML
+- `poc06_output.xml`: 中間JSONから生成したDraw.io XML
+
+Draw.io XMLでは、Excelの各シートを1つの `<diagram>` として出力する。`<diagram name="...">` にはExcelのシート名を設定し、ページ内にもシート名ラベルを配置する。
 
 実行方法:
 
@@ -195,7 +197,7 @@ python3 doc/20.InternalDesign/00.POC/06/poc06_xlsx_zip_to_drawio.py
 python3 doc/20.InternalDesign/00.POC/06/poc06_xlsx_zip_to_drawio.py \
   --input doc/30.test/testData/テストデータ.xlsx \
   --json doc/20.InternalDesign/00.POC/06/poc06_intermediate.json \
-  --drawio doc/20.InternalDesign/00.POC/06/poc06_output.drawio
+  --drawio doc/20.InternalDesign/00.POC/06/poc06_output.xml
 ```
 
 ## 10. POC結論
