@@ -1,0 +1,338 @@
+{
+  "workbook": {
+    "source": "/Users/sakiyama/Desktop/excel→md/doc/30.test/testData/テストデータ.xlsx",
+    "format": "xlsx-zip",
+    "sheets_count": 1
+  },
+  "sheets": [
+    {
+      "name": "シート1",
+      "path": "xl/worksheets/sheet1.xml",
+      "rows": [
+        {
+          "index": 1,
+          "height": null
+        },
+        {
+          "index": 17,
+          "height": null
+        },
+        {
+          "index": 18,
+          "height": null
+        },
+        {
+          "index": 19,
+          "height": null
+        },
+        {
+          "index": 20,
+          "height": null
+        },
+        {
+          "index": 24,
+          "height": null
+        }
+      ],
+      "cols": [
+        {
+          "min": 3,
+          "max": 3,
+          "width": 23.38,
+          "custom_width": true
+        },
+        {
+          "min": 4,
+          "max": 4,
+          "width": 33.25,
+          "custom_width": true
+        },
+        {
+          "min": 5,
+          "max": 5,
+          "width": 29.38,
+          "custom_width": true
+        }
+      ],
+      "cells": [
+        {
+          "ref": "A1",
+          "row": 1,
+          "col": 1,
+          "style_id": 1,
+          "type": "s",
+          "raw_value": "0",
+          "value": "サンプルテスト"
+        },
+        {
+          "ref": "B17",
+          "row": 17,
+          "col": 2,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "1",
+          "value": "no"
+        },
+        {
+          "ref": "C17",
+          "row": 17,
+          "col": 3,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "2",
+          "value": "title"
+        },
+        {
+          "ref": "D17",
+          "row": 17,
+          "col": 4,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "3",
+          "value": "detail"
+        },
+        {
+          "ref": "E17",
+          "row": 17,
+          "col": 5,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "4",
+          "value": "memo"
+        },
+        {
+          "ref": "B18",
+          "row": 18,
+          "col": 2,
+          "style_id": 2,
+          "type": "n",
+          "raw_value": "1.0",
+          "value": "1.0"
+        },
+        {
+          "ref": "C18",
+          "row": 18,
+          "col": 3,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "5",
+          "value": "オブジェクトA"
+        },
+        {
+          "ref": "D18",
+          "row": 18,
+          "col": 4,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "6",
+          "value": "青, 中央テキスト：”オブジェクトA”"
+        },
+        {
+          "ref": "E18",
+          "row": 18,
+          "col": 5,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "7",
+          "value": "-"
+        },
+        {
+          "ref": "B19",
+          "row": 19,
+          "col": 2,
+          "style_id": 2,
+          "type": "n",
+          "raw_value": "2.0",
+          "value": "2.0"
+        },
+        {
+          "ref": "C19",
+          "row": 19,
+          "col": 3,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "8",
+          "value": "右矢印"
+        },
+        {
+          "ref": "D19",
+          "row": 19,
+          "col": 4,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "9",
+          "value": "オブジェクトAからオブジェクトBへの矢印"
+        },
+        {
+          "ref": "E19",
+          "row": 19,
+          "col": 5,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "10",
+          "value": "細"
+        },
+        {
+          "ref": "B20",
+          "row": 20,
+          "col": 2,
+          "style_id": 2,
+          "type": "n",
+          "raw_value": "3.0",
+          "value": "3.0"
+        },
+        {
+          "ref": "C20",
+          "row": 20,
+          "col": 3,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "11",
+          "value": "オブジェクトB"
+        },
+        {
+          "ref": "D20",
+          "row": 20,
+          "col": 4,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "12",
+          "value": "赤, 中央テキスト：”オブジェクトB”"
+        },
+        {
+          "ref": "E20",
+          "row": 20,
+          "col": 5,
+          "style_id": 2,
+          "type": "s",
+          "raw_value": "7",
+          "value": "-"
+        },
+        {
+          "ref": "A24",
+          "row": 24,
+          "col": 1,
+          "style_id": 1,
+          "type": "s",
+          "raw_value": "13",
+          "value": "end"
+        }
+      ],
+      "styles": [
+        {
+          "style_id": 0,
+          "font_id": 0,
+          "fill_id": 0,
+          "border_id": 0,
+          "num_fmt_id": 0,
+          "apply_border": false,
+          "apply_alignment": true
+        },
+        {
+          "style_id": 1,
+          "font_id": 1,
+          "fill_id": 0,
+          "border_id": 0,
+          "num_fmt_id": 0,
+          "apply_border": false,
+          "apply_alignment": true
+        },
+        {
+          "style_id": 2,
+          "font_id": 1,
+          "fill_id": 0,
+          "border_id": 1,
+          "num_fmt_id": 0,
+          "apply_border": true,
+          "apply_alignment": true
+        }
+      ],
+      "merged_cells": [],
+      "drawings": [
+        {
+          "id": "3",
+          "name": "Shape 3",
+          "kind": "vertex",
+          "preset": "flowChartAlternateProcess",
+          "text": "オブジェクトA",
+          "fill": "#CFE2F3",
+          "stroke": "#000000",
+          "headEnd": "none",
+          "tailEnd": "none",
+          "startConnectionId": null,
+          "endConnectionId": null,
+          "x_emu": 392500,
+          "y_emu": 183675,
+          "x": 41.21,
+          "y": 19.28,
+          "width_emu": 2507700,
+          "height_emu": 2030100,
+          "width": 263.28,
+          "height": 213.13
+        },
+        {
+          "id": "4",
+          "name": "Shape 4",
+          "kind": "edge",
+          "preset": "straightConnector1",
+          "text": "",
+          "fill": "#000000",
+          "stroke": "#000000",
+          "headEnd": "none",
+          "tailEnd": "triangle",
+          "startConnectionId": null,
+          "endConnectionId": "5",
+          "x_emu": 2900200,
+          "y_emu": 1193625,
+          "x": 304.48,
+          "y": 125.31,
+          "width_emu": 1612200,
+          "height_emu": 5100,
+          "width": 169.26,
+          "height": 0.54,
+          "sourceId": "3",
+          "targetId": "5"
+        },
+        {
+          "id": "5",
+          "name": "Shape 5",
+          "kind": "vertex",
+          "preset": "flowChartAlternateProcess",
+          "text": "オブジェクトB",
+          "fill": "#EA9999",
+          "stroke": "#000000",
+          "headEnd": "none",
+          "tailEnd": "none",
+          "startConnectionId": null,
+          "endConnectionId": null,
+          "x_emu": 4512400,
+          "y_emu": 183675,
+          "x": 473.74,
+          "y": 19.28,
+          "width_emu": 2507700,
+          "height_emu": 2030100,
+          "width": 263.28,
+          "height": 213.13
+        }
+      ],
+      "images": [],
+      "anchors": [
+        {
+          "type": "oneCellAnchor",
+          "from": {
+            "col": 0,
+            "row": 3,
+            "colOff_emu": 904875,
+            "rowOff_emu": 28575
+          },
+          "ext": {
+            "cx_emu": 6648450,
+            "cy_emu": 2047875,
+            "width": 698.0,
+            "height": 215.0
+          }
+        }
+      ]
+    }
+  ]
+}

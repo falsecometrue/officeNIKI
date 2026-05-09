@@ -1,0 +1,132 @@
+{
+  "workbook": {
+    "source": "doc/30.test/testData/テストデータ.xlsx",
+    "format": "xlsx-zip",
+    "sheets_count": 1
+  },
+  "sheets": [
+    {
+      "name": "シート1",
+      "path": "xl/worksheets/sheet1.xml",
+      "rows": [
+        { "index": 1 },
+        { "index": 17 },
+        { "index": 18 },
+        { "index": 19 },
+        { "index": 20 },
+        { "index": 24 }
+      ],
+      "cols": [
+        { "min": 3, "max": 3, "width": 23.38 },
+        { "min": 4, "max": 4, "width": 33.25 },
+        { "min": 5, "max": 5, "width": 29.38 }
+      ],
+      "cells": [
+        { "ref": "A1", "row": 1, "col": 1, "style_id": 1, "type": "s", "value": "サンプルテスト" },
+        { "ref": "B17", "row": 17, "col": 2, "style_id": 2, "type": "s", "value": "no" },
+        { "ref": "C17", "row": 17, "col": 3, "style_id": 2, "type": "s", "value": "title" },
+        { "ref": "D17", "row": 17, "col": 4, "style_id": 2, "type": "s", "value": "detail" },
+        { "ref": "E17", "row": 17, "col": 5, "style_id": 2, "type": "s", "value": "memo" },
+        { "ref": "B18", "row": 18, "col": 2, "style_id": 2, "type": "n", "value": "1.0" },
+        { "ref": "C18", "row": 18, "col": 3, "style_id": 2, "type": "s", "value": "オブジェクトA" },
+        { "ref": "D18", "row": 18, "col": 4, "style_id": 2, "type": "s", "value": "青, 中央テキスト：”オブジェクトA”" },
+        { "ref": "E18", "row": 18, "col": 5, "style_id": 2, "type": "s", "value": "-" },
+        { "ref": "B19", "row": 19, "col": 2, "style_id": 2, "type": "n", "value": "2.0" },
+        { "ref": "C19", "row": 19, "col": 3, "style_id": 2, "type": "s", "value": "右矢印" },
+        { "ref": "D19", "row": 19, "col": 4, "style_id": 2, "type": "s", "value": "オブジェクトAからオブジェクトBへの矢印" },
+        { "ref": "E19", "row": 19, "col": 5, "style_id": 2, "type": "s", "value": "細" },
+        { "ref": "B20", "row": 20, "col": 2, "style_id": 2, "type": "n", "value": "3.0" },
+        { "ref": "C20", "row": 20, "col": 3, "style_id": 2, "type": "s", "value": "オブジェクトB" },
+        { "ref": "D20", "row": 20, "col": 4, "style_id": 2, "type": "s", "value": "赤, 中央テキスト：”オブジェクトB”" },
+        { "ref": "E20", "row": 20, "col": 5, "style_id": 2, "type": "s", "value": "-" },
+        { "ref": "A24", "row": 24, "col": 1, "style_id": 1, "type": "s", "value": "end" }
+      ],
+      "styles": [
+        { "style_id": 1, "source": "xl/styles.xml", "note": "fontId=1, borderId=0" },
+        { "style_id": 2, "source": "xl/styles.xml", "note": "fontId=1, borderId=1, thin border" }
+      ],
+      "merged_cells": [],
+      "drawings": [
+        {
+          "id": "3",
+          "name": "Shape 3",
+          "kind": "vertex",
+          "preset": "flowChartAlternateProcess",
+          "text": "オブジェクトA",
+          "x_emu": 392500,
+          "y_emu": 183675,
+          "width_emu": 2507700,
+          "height_emu": 2030100,
+          "x": 41.21,
+          "y": 19.28,
+          "width": 263.28,
+          "height": 213.13,
+          "fill": "#CFE2F3",
+          "stroke": "#000000"
+        },
+        {
+          "id": "4",
+          "name": "Shape 4",
+          "kind": "edge",
+          "preset": "straightConnector1",
+          "text": "",
+          "x_emu": 2900200,
+          "y_emu": 1193625,
+          "width_emu": 1612200,
+          "height_emu": 5100,
+          "x": 304.48,
+          "y": 125.31,
+          "width": 169.26,
+          "height": 0.54,
+          "stroke": "#000000",
+          "tailEnd": "triangle",
+          "endConnectionId": "5",
+          "inferredSourceId": "3",
+          "targetId": "5"
+        },
+        {
+          "id": "5",
+          "name": "Shape 5",
+          "kind": "vertex",
+          "preset": "flowChartAlternateProcess",
+          "text": "オブジェクトB",
+          "x_emu": 4512400,
+          "y_emu": 183675,
+          "width_emu": 2507700,
+          "height_emu": 2030100,
+          "x": 473.74,
+          "y": 19.28,
+          "width": 263.28,
+          "height": 213.13,
+          "fill": "#EA9999",
+          "stroke": "#000000"
+        }
+      ],
+      "images": [],
+      "anchors": [
+        {
+          "type": "oneCellAnchor",
+          "from": {
+            "col": 0,
+            "row": 3,
+            "colOff_emu": 904875,
+            "rowOff_emu": 28575
+          },
+          "ext": {
+            "cx_emu": 6648450,
+            "cy_emu": 2047875,
+            "width": 698.0,
+            "height": 215.0
+          }
+        }
+      ]
+    }
+  ],
+  "drawio_mapping": {
+    "cells": "mxCell vertex table/grid",
+    "drawings.vertex": "mxCell vertex",
+    "drawings.edge": "mxCell edge",
+    "images": "mxCell vertex shape=image with base64 data URI",
+    "geometry": "mxGeometry x/y/width/height"
+  }
+}

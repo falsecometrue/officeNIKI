@@ -1,115 +1,159 @@
-# POC 計画: Excel/HTML → AI が読み込みやすい形式への変換
+# POC 計画: Word/Excel → Markdown / Draw.io への変換
 
 ## 1. 背景
+- 変換方針を `Word → Markdown`、`Excel → Draw.io` に変更する。
+- Word は文書構造を Markdown として扱いやすくする。
+- Excel は表、画像、図形、矢印、座標を Draw.io 上で確認・補正しやすくする。
+- 変換時は、入力ファイルを直接最終形式へ変換せず、まず中間言語として JSON に解析結果を集約する。
+
+```text
+Word .docx  → intermediate.json → Markdown
+Excel .xlsx → intermediate.json → Draw.io XML
+```
+
+## 2. 目的
+- Word 文書を Markdown に変換し、AI が読みやすく、人間も差分確認しやすい形式にする。
+- Excel ブックを Draw.io に変換し、表・図形・画像をGUI上で補正できる形式にする。
+- 中間 JSON を残すことで、解析結果の検証、再生成、デバッグをしやすくする。
+
+## 3. 実現方針
+
+### 3.1 Word → Markdown
+- `.docx` を解析し、見出し、段落、箇条書き、表、画像、注記などを抽出する。
+- 抽出結果はまず中間 JSON に保存する。
+- 中間 JSON から Markdown を生成する。
+- 画像は Markdown から参照できるリソースとして出力する。
+
+### 3.2 Excel → Draw.io
+- `.xlsx` または HTML エクスポートを解析し、シート、行、列、セル、スタイル、画像、図形、矢印、座標を抽出する。
+- 抽出結果はまず中間 JSON に保存する。
+- 中間 JSON から Draw.io XML を生成する。
+- 画像は Draw.io XML 内に base64 data URI として埋め込み、1ファイルで再現できる形式を基本とする。
+- Excel 図形や矢印は、可能な範囲で Draw.io の `mxCell` オブジェクトへ変換する。
+- 変換不能な複雑図形は画像としてフォールバックする。
+
+### 3.3 中間 JSON
+中間 JSON は最終成果物ではなく、変換処理の中心となる中間言語として扱う。
+
+Word 用 JSON:
+- `document`
+- `sections`
+- `paragraphs`
+- `headings`
+- `lists`
+- `tables`
+- `images`
+- `styles`
+
+Excel 用 JSON:
+- `workbook`
+- `sheets`
+- `rows`
+- `cols`
+- `cells`
+- `styles`
+- `merged_cells`
+- `drawings`
+- `images`
+- `anchors`
+
+中間 JSON に含めるべき情報:
+- テキスト値
+- スタイル
+- 行高・列幅
+- セル結合
+- 画像パスまたはbase64参照
+- 図形種別
+- 座標とサイズ
+- リレーション情報
+
+## 4. Excel POC の現状メモ
 - `doc/30.test/testData/Excel_sampleData/シート1.html` は Google スプレッドシートの HTML 変換出力。
 - Excel の「Web ページとして保存」や Google スプレッドシートの HTML エクスポートは、HTML/CSS/JS/画像のセットを生成する点で類似。
-- 目的は、これらの出力を AI が意味を理解しやすい構造化形式に変換すること。
-
-## 2. サンプル HTML から見えた課題
 - 表は `<table class="waffle">` で出力される。
 - 図形・イラストは `resources/drawing0.png` など画像リソースとして出力され、追加の JS で位置調整が行われている。
 - CSS が内部 `<style>` と外部 `resources/sheet.css` に分かれる。
 - そのため、単純な HTML テキスト抽出だけでは図形や位置情報を正しく把握できない。
 
-## 3. 実現方針
+## 5. Draw.io 変換方針
+- テーブルは Draw.io の HTML table またはセルグリッドとして変換する。
+- 画像は Draw.io XML の `shape=image` として出力する。
+- 画像データは `data:image/png,...` の base64 data URI として埋め込む。
+- 図形は Draw.io の vertex に変換する。
+- 矢印は Draw.io の edge に変換する。
+- 座標とサイズは Draw.io の `mxGeometry` に変換する。
+- webなどへアップロードしてGUI上で人間が補正する工程を前提に、編集しやすい構造を優先する。
 
-### 3.1 Excel → HTML/CSS/JS/画像 の実現
-1. Excel 側ではまず、既存のエクスポート機能を活用する。
-   - Excel の「Web ページとして保存」/「HTML エクスポート」
-   - Google スプレッドシートの HTML 変換と同等の出力を期待。
-2. 自動化が必要な場合は、以下を検討する。
-   - `LibreOffice` / `soffice --convert-to html` での変換
-   - Python の `openpyxl` / `xlrd` などによるセル・画像抽出 + HTML 生成
-   - Node.js の `sheetjs` / `exceljs` などでセルデータを取得し、HTML とリソースを生成
-3. 図形や描画については、Excel の出力に含まれる以下を確認する。
-   - `drawing*.png` などの画像データ
-   - 画像位置を決める JavaScript
-   - セルのマージやスタイル情報
-
-### 3.2 HTML/CSS/JS/画像 → AI が読みやすい形式 の実現
-#### 3.2.1 解析手順
-- HTML を DOM ベースで解析
-- CSS を読み込んで必要なスタイルを簡略化
-- 画像リソースを収集
-- JavaScript による位置調整があれば、可能な限り再現または画像ベースで扱う
-
-#### 3.2.2 出力形式
-- Markdown
-  - シート名/テーブルを Markdown 表に変換
-  - 画像は `![]()` 形式で埋め込み
-  - 図形はテキスト化して補足説明を付与
-- JSON
-  - `sheets`, `rows`, `cols`, `cells`, `drawings`, `images` などの構造化データ
-  - セル値、スタイル、マージ、座標、図形オブジェクトの属性を含める
-- Draw.io XML
-  - 図形と矢印を `mxGraphModel` 相当の XML 形式へ変換
-  - 位置情報・サイズ・ラベルを持つオブジェクト列として表現
-
-#### 3.2.3 図形・イラスト対応
-- HTML 中の埋め込み画像や `<img>` を検出
-- サンプルのように描画オブジェクト位置が JS で制御される場合は、以下の手順を検討
-  - JS を実行してレンダリング後の位置情報を取得（Headless Chrome/Puppeteer）
-  - 位置情報が取得できない場合は、画像自体を AI へ渡すための `img` パス/alt テキストを残す
-- 図形を構造化するため、以下の情報を抽出
-  - 図形タイプ（四角、矢印、テキストラベル）
-  - 色、サイズ、座標
-  - 元データの意味（例: オブジェクトA、オブジェクトB、矢印）
-
-### 3.3 変換方針
-大前提、webなどでアップロードしてGUI上で人間側で補正する工程がある。
-
-・テーブルは直接変換  
-・いったん画像はそのまま流用する。コピーなどで  
-  backlog意味解釈についてはOCRなどで解釈させる？  
-  半自動化で人間による調整もあるから一旦保留  
-
-・オブジェクトヒントはより正確に見積もる方法はある？  
- 　人間の補正があるからヒントのままでもよい。
-
-### 3.4 変換テーブル
-| Excel | 中間（HTML/CSS/JS） | AI リーダブル（Markdown / Draw.io） |
+## 6. 変換テーブル
+| 入力 | 中間 JSON | 最終出力 |
 |---|---|---|
-| 表データ | `<table class="waffle">` + CSS スタイル | Markdown 表 / JSON テーブル / Draw.io テーブル |
-| セルテキスト | HTML セル内テキスト | Markdown テキスト / Draw.io ラベル |
-| マージセル・スタイル | HTML 属性（rowspan/colspan） + CSS | Markdown ではセル結合を簡易表現 / Draw.io では位置・幅で再現 |
-| 図形・矢印 | 画像リソース + JS 位置情報（posObj 等） | 画像埋め込み / Draw.io 図形ヒント（位置・ラベル） |
-| 画像 | `<img>` / `resources/*.png` | Markdown `![]()` / Draw.io 画像要素 |
-| レイアウト情報 | CSS + JS 座標 | Markdown では補足説明 / Draw.io では x,y,size |
+| Word 見出し/段落 | `headings`, `paragraphs` | Markdown 見出し/本文 |
+| Word 箇条書き | `lists` | Markdown list |
+| Word 表 | `tables` | Markdown 表 |
+| Word 画像 | `images` | Markdown 画像参照 |
+| Excel 表データ | `sheets`, `rows`, `cols`, `cells` | Draw.io テーブル / セルグリッド |
+| Excel セルテキスト | `cells[].value` | Draw.io ラベル |
+| Excel マージセル・スタイル | `merged_cells`, `styles` | Draw.io の位置・幅・スタイル |
+| Excel 図形 | `drawings` | Draw.io vertex |
+| Excel 矢印 | `drawings`, `anchors` | Draw.io edge |
+| Excel 画像 | `images` | Draw.io 画像要素(base64) |
+| レイアウト情報 | `x`, `y`, `width`, `height` | Draw.io `mxGeometry` |
 
-### 4.1 変換ライブラリ候補
-- Excel → HTML 生成
-  - `LibreOffice` / `soffice --convert-to html`
-  - `sheetjs` / `exceljs` / `xlsx`（Node.js）
-  - `openpyxl` / `python-docx`（Python）
-- HTML/CSS/JS 解析
-  - `jsdom` / `cheerio`（Node.js）
-  - `BeautifulSoup` / `lxml`（Python）
-  - `Puppeteer` / `Playwright`（レンダリング後の位置取得）
-- Draw.io XML 生成
-  - 独自変換コードで `mxGraphModel` を構築
-  - 既存の draw.io ライブラリがあれば活用
+## 7. 変換ライブラリ候補
 
-### 4.2 実装パターン
-- Option A: Excel から直接構造化データへ変換
-  - `.xlsx` を直接解析し、HTML を経由せず JSON/Draw.io/XML を生成
-  - 図形は `xl/drawings` を解析
-- Option B: Excel → HTML 出力を一次生成し、HTML を解析して構造化データへ変換
-  - 本 POC のサンプルに適した方法
-  - `HTML + CSS + 画像 + JS` をそのまま扱う
+### 7.1 Word → Markdown
+- `python-docx`
+- `pandoc`
+- `mammoth`
 
-## 5. POC 進行計画
-1. サンプル HTML の詳細解析
-   - `シート1.html` の table 構造、CSS、画像埋め込み、JS 制御を調査
-2. HTML 解析モジュールの作成
-   - セルデータ抽出、画像収集、図形抽出
-3. 出力フォーマット設計
-   - Markdown、JSON、Draw.io XML のスキーマ
-4. 実装と検証
-   - `Excel_sampleData` を入力として、AI 読み取り形式への変換を試行
-5. Excel 直接出力対応の検証
-   - Excel の HTML 出力形式と同等の結果を再現できるか確認
+### 7.2 Excel → 中間 JSON / Draw.io
+- `openpyxl` / `xlrd`（Python）
+- `sheetjs` / `exceljs` / `xlsx`（Node.js）
+- `LibreOffice` / `soffice --convert-to html`
 
-## 6. まとめ
-- `excel → html,css,js,img → AIが読み込みやすい形` は、まず既存の HTML エクスポート形式を利用し、そこから構造化変換を行う。
-- `html,css,js,img → AIが読み込みやすい形` では、DOM 解析に加えて JS レンダリングや画像埋め込みを前提とした処理が必要。
-- 最終的には、Markdown / JSON / Draw.io XML の3つの形式を出力できるパイプラインを確立する。
+### 7.3 HTML/CSS/JS 解析
+- `BeautifulSoup` / `lxml`（Python）
+- `jsdom` / `cheerio`（Node.js）
+- `Puppeteer` / `Playwright`（レンダリング後の位置取得）
+
+### 7.4 Draw.io XML 生成
+- 独自変換コードで `mxGraphModel` を構築する。
+- 既存の draw.io ライブラリがあれば活用する。
+
+## 8. 実装パターン
+
+### Option A: Word から直接中間 JSON へ変換
+- `.docx` を解析し、見出し、段落、表、画像を中間 JSON にする。
+- 中間 JSON から Markdown を生成する。
+
+### Option B: Excel から直接中間 JSON へ変換
+- `.xlsx` を直接解析し、HTML を経由せず中間 JSON を生成する。
+- 図形は `xl/drawings` を解析する。
+- 中間 JSON から Draw.io XML を生成する。
+
+### Option C: Excel → HTML 出力を解析して中間 JSON へ変換
+- 本 POC のサンプルに適した方法。
+- `HTML + CSS + 画像 + JS` を扱い、中間 JSON を生成する。
+- 中間 JSON から Draw.io XML を生成する。
+
+## 9. POC 進行計画
+1. Word → Markdown の変換方針を整理する。
+   - `.docx` の見出し、段落、表、画像を中間 JSON にする。
+   - 中間 JSON から Markdown を生成する。
+2. Excel → Draw.io の変換方針を整理する。
+   - `.xlsx` またはHTMLエクスポートから、表・画像・図形・座標を中間 JSON にする。
+   - 中間 JSON から Draw.io XML を生成する。
+3. ExcelサンプルHTMLの詳細解析を継続する。
+   - `シート1.html` の table 構造、CSS、画像埋め込み、JS 制御を調査する。
+4. 中間 JSON スキーマを設計する。
+   - Word用JSON、Excel用JSON、Draw.io生成用JSONの項目を定義する。
+5. 実装と検証を行う。
+   - Wordサンプルを入力として Markdown への変換を試行する。
+   - `Excel_sampleData` を入力として Draw.io への変換を試行する。
+
+## 10. まとめ
+- 変換方針は `Word → Markdown`、`Excel → Draw.io` とする。
+- どちらの変換でも、まず中間言語として JSON を生成し、最終成果物は JSON から生成する。
+- 中間 JSON は、解析結果の検証・再生成・デバッグに使う。
+- Excel → Draw.io では、画像は base64 で埋め込み、図形・矢印は可能な範囲で Draw.io オブジェクトへ変換する。
+- 最終的には、Word用Markdown生成パイプラインと、Excel用Draw.io生成パイプラインを確立する。
