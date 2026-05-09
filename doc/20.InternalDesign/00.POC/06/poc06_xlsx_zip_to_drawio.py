@@ -23,8 +23,8 @@ EMU_PER_INCH = 914400
 PX_PER_INCH = 96
 DEFAULT_COL_WIDTH = 12.63
 DEFAULT_ROW_HEIGHT_PT = 15.75
-TABLE_ORIGIN_X = 40
-TABLE_ORIGIN_Y = 280
+SHEET_ORIGIN_X = 40
+SHEET_ORIGIN_Y = 40
 
 
 # Excel DrawingML uses EMU. Draw.io geometry is easier to handle as px.
@@ -177,8 +177,51 @@ def find_color(node: ET.Element, path: str) -> Optional[str]:
     return f"#{color.attrib['val']}"
 
 
+def excel_col_width_to_px(width: float) -> float:
+    # Approximation used for layout POC. Excel's exact width depends on default font metrics.
+    return round(width * 7 + 5, 2)
+
+
+def excel_row_height_to_px(height_pt: float) -> float:
+    return round(height_pt * PX_PER_INCH / 72, 2)
+
+
+def col_width_map_from_cols(cols: List[Dict[str, object]]) -> Dict[int, float]:
+    widths: Dict[int, float] = {}
+    for col in cols:
+        for index in range(int(col["min"]), int(col["max"]) + 1):
+            widths[index] = excel_col_width_to_px(float(col.get("width") or DEFAULT_COL_WIDTH))
+    return widths
+
+
+def row_height_map_from_rows(rows: List[Dict[str, object]]) -> Dict[int, float]:
+    heights: Dict[int, float] = {}
+    for row in rows:
+        height = row.get("height") or DEFAULT_ROW_HEIGHT_PT
+        heights[int(row["index"])] = excel_row_height_to_px(float(height))
+    return heights
+
+
+def col_width_map(sheet: Dict[str, object]) -> Dict[int, float]:
+    return col_width_map_from_cols(sheet.get("cols", []))
+
+
+def row_height_map(sheet: Dict[str, object]) -> Dict[int, float]:
+    return row_height_map_from_rows(sheet.get("rows", []))
+
+
+def sheet_x_from_zero_based_col(col: int, col_widths: Dict[int, float]) -> float:
+    default_col_px = excel_col_width_to_px(DEFAULT_COL_WIDTH)
+    return SHEET_ORIGIN_X + sum(col_widths.get(i, default_col_px) for i in range(1, col + 1))
+
+
+def sheet_y_from_zero_based_row(row: int, row_heights: Dict[int, float]) -> float:
+    default_row_px = excel_row_height_to_px(DEFAULT_ROW_HEIGHT_PT)
+    return SHEET_ORIGIN_Y + sum(row_heights.get(i, default_row_px) for i in range(1, row + 1))
+
+
 # Anchors tell where a drawing is attached to the sheet grid.
-def parse_anchor(anchor: ET.Element) -> Dict[str, object]:
+def parse_anchor(anchor: ET.Element, col_widths: Dict[int, float], row_heights: Dict[int, float]) -> Dict[str, object]:
     from_node = anchor.find("xdr:from", NS)
     ext = anchor.find("xdr:ext", NS)
     result: Dict[str, object] = {
@@ -193,6 +236,16 @@ def parse_anchor(anchor: ET.Element) -> Dict[str, object]:
             "colOff_emu": int(from_node.findtext("xdr:colOff", default="0", namespaces=NS)),
             "rowOff_emu": int(from_node.findtext("xdr:rowOff", default="0", namespaces=NS)),
         }
+        result["x"] = round(
+            sheet_x_from_zero_based_col(result["from"]["col"], col_widths)
+            + emu_to_px(result["from"]["colOff_emu"]),
+            2,
+        )
+        result["y"] = round(
+            sheet_y_from_zero_based_row(result["from"]["row"], row_heights)
+            + emu_to_px(result["from"]["rowOff_emu"]),
+            2,
+        )
     if ext is not None:
         result["ext"] = {
             "cx_emu": int(ext.attrib.get("cx", "0")),
@@ -203,8 +256,22 @@ def parse_anchor(anchor: ET.Element) -> Dict[str, object]:
     return result
 
 
+def parse_group_transform(group: ET.Element) -> Dict[str, int]:
+    xfrm = group.find("xdr:grpSpPr/a:xfrm", NS)
+    if xfrm is None:
+        return {"off_x": 0, "off_y": 0, "ch_off_x": 0, "ch_off_y": 0}
+    off = xfrm.find("a:off", NS)
+    ch_off = xfrm.find("a:chOff", NS)
+    return {
+        "off_x": int(off.attrib.get("x", "0")) if off is not None else 0,
+        "off_y": int(off.attrib.get("y", "0")) if off is not None else 0,
+        "ch_off_x": int(ch_off.attrib.get("x", "0")) if ch_off is not None else 0,
+        "ch_off_y": int(ch_off.attrib.get("y", "0")) if ch_off is not None else 0,
+    }
+
+
 # Convert one DrawingML shape/connector into the intermediate drawing object.
-def parse_drawing_shape(node: ET.Element) -> Dict[str, object]:
+def parse_drawing_shape(node: ET.Element, anchor_info: Dict[str, object], group_transform: Optional[Dict[str, int]] = None) -> Dict[str, object]:
     nv = node.find(".//xdr:cNvPr", NS)
     xfrm = node.find(".//a:xfrm", NS)
     geom = node.find(".//a:prstGeom", NS)
@@ -229,11 +296,23 @@ def parse_drawing_shape(node: ET.Element) -> Dict[str, object]:
         "endConnectionId": end_cxn.attrib.get("id") if end_cxn is not None else None,
     }
     if off is not None:
+        raw_x_emu = int(off.attrib.get("x", "0"))
+        raw_y_emu = int(off.attrib.get("y", "0"))
+        ch_off_x = group_transform["ch_off_x"] if group_transform else 0
+        ch_off_y = group_transform["ch_off_y"] if group_transform else 0
+        local_x_emu = raw_x_emu - ch_off_x
+        local_y_emu = raw_y_emu - ch_off_y
+        anchor_x = float(anchor_info.get("x", 0))
+        anchor_y = float(anchor_info.get("y", 0))
         shape.update({
-            "x_emu": int(off.attrib.get("x", "0")),
-            "y_emu": int(off.attrib.get("y", "0")),
-            "x": emu_to_px(off.attrib.get("x", "0")),
-            "y": emu_to_px(off.attrib.get("y", "0")),
+            "raw_x_emu": raw_x_emu,
+            "raw_y_emu": raw_y_emu,
+            "local_x_emu": local_x_emu,
+            "local_y_emu": local_y_emu,
+            "x_emu": local_x_emu,
+            "y_emu": local_y_emu,
+            "x": round(anchor_x + emu_to_px(local_x_emu), 2),
+            "y": round(anchor_y + emu_to_px(local_y_emu), 2),
         })
     if ext is not None:
         shape.update({
@@ -246,24 +325,31 @@ def parse_drawing_shape(node: ET.Element) -> Dict[str, object]:
 
 
 # drawing*.xml can contain anchors, grouped shapes, connectors, and pictures.
-def parse_drawings(package: zipfile.ZipFile, drawing_path: str) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
+def parse_drawings(package: zipfile.ZipFile, drawing_path: str, rows: List[Dict[str, object]], cols: List[Dict[str, object]]) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
     if drawing_path not in package.namelist():
         return [], []
     root = read_xml(package, drawing_path)
+    col_widths = col_width_map_from_cols(cols)
+    row_heights = row_height_map_from_rows(rows)
     anchors = []
     drawings = []
     for anchor in list(root):
         if not anchor.tag.endswith(("oneCellAnchor", "twoCellAnchor", "absoluteAnchor")):
             continue
-        anchors.append(parse_anchor(anchor))
-        containers = [anchor]
-        containers.extend(anchor.findall("xdr:grpSp", NS))
-        for container in containers:
-            for child in list(container):
-                if child.tag.endswith("sp") or child.tag.endswith("cxnSp") or child.tag.endswith("pic"):
-                    if child.tag.endswith("pic"):
-                        continue
-                    drawings.append(parse_drawing_shape(child))
+        anchor_info = parse_anchor(anchor, col_widths, row_heights)
+        anchors.append(anchor_info)
+        for child in list(anchor):
+            if child.tag.endswith("sp") or child.tag.endswith("cxnSp") or child.tag.endswith("pic"):
+                if child.tag.endswith("pic"):
+                    continue
+                drawings.append(parse_drawing_shape(child, anchor_info))
+            elif child.tag.endswith("grpSp"):
+                group_transform = parse_group_transform(child)
+                for group_child in list(child):
+                    if group_child.tag.endswith("sp") or group_child.tag.endswith("cxnSp") or group_child.tag.endswith("pic"):
+                        if group_child.tag.endswith("pic"):
+                            continue
+                        drawings.append(parse_drawing_shape(group_child, anchor_info, group_transform))
     infer_edge_sources(drawings)
     return drawings, anchors
 
@@ -333,7 +419,7 @@ def build_intermediate(xlsx_path: Path) -> Dict[str, object]:
             for rel in sheet_rels.values():
                 if rel["type"].endswith("/drawing"):
                     drawing_path = resolve_package_path(sheet_def["path"], rel["target"])
-                    drawings, anchors = parse_drawings(package, drawing_path)
+                    drawings, anchors = parse_drawings(package, drawing_path, rows, cols)
             sheets.append({
                 "name": sheet_def["name"],
                 "path": sheet_def["path"],
@@ -359,32 +445,8 @@ def build_intermediate(xlsx_path: Path) -> Dict[str, object]:
 def drawio_shape_style(shape: Dict[str, object]) -> str:
     fill = shape.get("fill") or "#FFFFFF"
     stroke = shape.get("stroke") or "#000000"
-    return f"rounded=0;whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};"
-
-
-def excel_col_width_to_px(width: float) -> float:
-    # Approximation used for layout POC. Excel's exact width depends on default font metrics.
-    return round(width * 7 + 5, 2)
-
-
-def excel_row_height_to_px(height_pt: float) -> float:
-    return round(height_pt * PX_PER_INCH / 72, 2)
-
-
-def col_width_map(sheet: Dict[str, object]) -> Dict[int, float]:
-    widths: Dict[int, float] = {}
-    for col in sheet.get("cols", []):
-        for index in range(int(col["min"]), int(col["max"]) + 1):
-            widths[index] = excel_col_width_to_px(float(col.get("width") or DEFAULT_COL_WIDTH))
-    return widths
-
-
-def row_height_map(sheet: Dict[str, object]) -> Dict[int, float]:
-    heights: Dict[int, float] = {}
-    for row in sheet.get("rows", []):
-        height = row.get("height") or DEFAULT_ROW_HEIGHT_PT
-        heights[int(row["index"])] = excel_row_height_to_px(float(height))
-    return heights
+    rounded = "1;arcSize=12" if shape.get("preset") == "flowChartAlternateProcess" else "0"
+    return f"rounded={rounded};whiteSpace=wrap;html=1;fillColor={fill};strokeColor={stroke};"
 
 
 def cell_geometry(cell: Dict[str, object], col_widths: Dict[int, float], row_heights: Dict[int, float]) -> Dict[str, float]:
@@ -392,8 +454,8 @@ def cell_geometry(cell: Dict[str, object], col_widths: Dict[int, float], row_hei
     row = int(cell["row"])
     default_col_px = excel_col_width_to_px(DEFAULT_COL_WIDTH)
     default_row_px = excel_row_height_to_px(DEFAULT_ROW_HEIGHT_PT)
-    x = TABLE_ORIGIN_X + sum(col_widths.get(i, default_col_px) for i in range(1, col))
-    y = TABLE_ORIGIN_Y + sum(row_heights.get(i, default_row_px) for i in range(1, row))
+    x = SHEET_ORIGIN_X + sum(col_widths.get(i, default_col_px) for i in range(1, col))
+    y = SHEET_ORIGIN_Y + sum(row_heights.get(i, default_row_px) for i in range(1, row))
     return {
         "x": round(x, 2),
         "y": round(y, 2),

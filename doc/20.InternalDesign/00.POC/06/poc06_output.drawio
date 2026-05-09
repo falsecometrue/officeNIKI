@@ -6,64 +6,64 @@
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
         <mxCell id="cell-A1" value="サンプルテスト" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D9D9D9;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="40" y="280" width="93.41" height="21.0" as="geometry"/>
+          <mxGeometry x="40" y="40" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-B17" value="no" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="133.41" y="616.0" width="93.41" height="21.0" as="geometry"/>
+          <mxGeometry x="133.41" y="376.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-C17" value="title" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="226.82" y="616.0" width="168.66" height="21.0" as="geometry"/>
+          <mxGeometry x="226.82" y="376.0" width="168.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-D17" value="detail" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="395.48" y="616.0" width="237.75" height="21.0" as="geometry"/>
+          <mxGeometry x="395.48" y="376.0" width="237.75" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-E17" value="memo" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="633.23" y="616.0" width="210.66" height="21.0" as="geometry"/>
+          <mxGeometry x="633.23" y="376.0" width="210.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-B18" value="1.0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="133.41" y="637.0" width="93.41" height="21.0" as="geometry"/>
+          <mxGeometry x="133.41" y="397.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-C18" value="オブジェクトA" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="226.82" y="637.0" width="168.66" height="21.0" as="geometry"/>
+          <mxGeometry x="226.82" y="397.0" width="168.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-D18" value="青, 中央テキスト：”オブジェクトA”" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="395.48" y="637.0" width="237.75" height="21.0" as="geometry"/>
+          <mxGeometry x="395.48" y="397.0" width="237.75" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-E18" value="-" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="633.23" y="637.0" width="210.66" height="21.0" as="geometry"/>
+          <mxGeometry x="633.23" y="397.0" width="210.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-B19" value="2.0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="133.41" y="658.0" width="93.41" height="21.0" as="geometry"/>
+          <mxGeometry x="133.41" y="418.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-C19" value="右矢印" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="226.82" y="658.0" width="168.66" height="21.0" as="geometry"/>
+          <mxGeometry x="226.82" y="418.0" width="168.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-D19" value="オブジェクトAからオブジェクトBへの矢印" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="395.48" y="658.0" width="237.75" height="21.0" as="geometry"/>
+          <mxGeometry x="395.48" y="418.0" width="237.75" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-E19" value="細" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="633.23" y="658.0" width="210.66" height="21.0" as="geometry"/>
+          <mxGeometry x="633.23" y="418.0" width="210.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-B20" value="3.0" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="133.41" y="679.0" width="93.41" height="21.0" as="geometry"/>
+          <mxGeometry x="133.41" y="439.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-C20" value="オブジェクトB" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="226.82" y="679.0" width="168.66" height="21.0" as="geometry"/>
+          <mxGeometry x="226.82" y="439.0" width="168.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-D20" value="赤, 中央テキスト：”オブジェクトB”" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="395.48" y="679.0" width="237.75" height="21.0" as="geometry"/>
+          <mxGeometry x="395.48" y="439.0" width="237.75" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-E20" value="-" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#000000;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="633.23" y="679.0" width="210.66" height="21.0" as="geometry"/>
+          <mxGeometry x="633.23" y="439.0" width="210.66" height="21.0" as="geometry"/>
         </mxCell>
         <mxCell id="cell-A24" value="end" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D9D9D9;align=center;verticalAlign=middle;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="40" y="763.0" width="93.41" height="21.0" as="geometry"/>
+          <mxGeometry x="40" y="523.0" width="93.41" height="21.0" as="geometry"/>
         </mxCell>
-        <mxCell id="shape-3" value="オブジェクトA" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#CFE2F3;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="41.21" y="19.28" width="263.28" height="213.13" as="geometry"/>
+        <mxCell id="shape-3" value="オブジェクトA" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#CFE2F3;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="135.0" y="106.0" width="263.28" height="213.13" as="geometry"/>
         </mxCell>
-        <mxCell id="shape-5" value="オブジェクトB" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EA9999;strokeColor=#000000;" vertex="1" parent="1">
-          <mxGeometry x="473.74" y="19.28" width="263.28" height="213.13" as="geometry"/>
+        <mxCell id="shape-5" value="オブジェクトB" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EA9999;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="567.54" y="106.0" width="263.28" height="213.13" as="geometry"/>
         </mxCell>
         <mxCell id="edge-4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=classic;" edge="1" parent="1" source="shape-3" target="shape-5">
           <mxGeometry relative="1" as="geometry"/>
