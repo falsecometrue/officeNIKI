@@ -4,6 +4,7 @@
     "format": "xlsx-zip",
     "image_output": "external_path",
     "resources_dir": "resources",
+    "image_base_url": "http://localhost:8008/resources",
     "sheets_count": 2
   },
   "sheets": [
@@ -341,13 +342,15 @@
           "path": "xl/media/image2.png",
           "mime": "image/png",
           "image_ref_type": "external_path",
-          "external_path": "resources/image2.png"
+          "external_path": "resources/image2.png",
+          "drawio_image_src": "http://localhost:8008/resources/image2.png"
         },
         {
           "path": "xl/media/image1.png",
           "mime": "image/png",
           "image_ref_type": "external_path",
-          "external_path": "resources/image1.png"
+          "external_path": "resources/image1.png",
+          "drawio_image_src": "http://localhost:8008/resources/image1.png"
         }
       ],
       "anchors": [
@@ -518,7 +521,8 @@
           "width": 408.0,
           "height": 223.0,
           "image_ref_type": "external_path",
-          "external_path": "resources/image2.png"
+          "external_path": "resources/image2.png",
+          "drawio_image_src": "http://localhost:8008/resources/image2.png"
         },
         {
           "id": "pic-2",
@@ -531,7 +535,8 @@
           "width": 408.0,
           "height": 223.0,
           "image_ref_type": "external_path",
-          "external_path": "resources/image2.png"
+          "external_path": "resources/image2.png",
+          "drawio_image_src": "http://localhost:8008/resources/image2.png"
         },
         {
           "id": "pic-3",
@@ -544,7 +549,8 @@
           "width": 408.0,
           "height": 223.0,
           "image_ref_type": "external_path",
-          "external_path": "resources/image2.png"
+          "external_path": "resources/image2.png",
+          "drawio_image_src": "http://localhost:8008/resources/image2.png"
         },
         {
           "id": "pic-4",
@@ -557,7 +563,8 @@
           "width": 200.0,
           "height": 200.0,
           "image_ref_type": "external_path",
-          "external_path": "resources/image1.png"
+          "external_path": "resources/image1.png",
+          "drawio_image_src": "http://localhost:8008/resources/image1.png"
         }
       ],
       "images": [
@@ -565,13 +572,15 @@
           "path": "xl/media/image2.png",
           "mime": "image/png",
           "image_ref_type": "external_path",
-          "external_path": "resources/image2.png"
+          "external_path": "resources/image2.png",
+          "drawio_image_src": "http://localhost:8008/resources/image2.png"
         },
         {
           "path": "xl/media/image1.png",
           "mime": "image/png",
           "image_ref_type": "external_path",
-          "external_path": "resources/image1.png"
+          "external_path": "resources/image1.png",
+          "drawio_image_src": "http://localhost:8008/resources/image1.png"
         }
       ],
       "anchors": [

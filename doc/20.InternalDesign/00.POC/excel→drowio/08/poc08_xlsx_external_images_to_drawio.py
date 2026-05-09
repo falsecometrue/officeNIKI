@@ -27,6 +27,7 @@ DEFAULT_ROW_HEIGHT_PT = 15.75
 SHEET_ORIGIN_X = 40
 SHEET_ORIGIN_Y = 40
 RESOURCE_DIR_NAME = "resources"
+DEFAULT_IMAGE_BASE_URL = "http://localhost:8008/resources"
 
 
 # Excel DrawingML uses EMU. Draw.io geometry is easier to handle as px.
@@ -250,6 +251,18 @@ def copy_image_resource(
     return rel_path
 
 
+def drawio_image_source(external_path: str, image_base_url: str) -> str:
+    # Draw.io does not accept local relative paths such as resources/image.png
+    # as a valid image source. Keep files external, but pass Draw.io a URL.
+    if not external_path:
+        return ""
+    if re.match(r"^[a-zA-Z][a-zA-Z0-9+.-]*:", external_path):
+        return external_path
+    base = image_base_url.rstrip("/")
+    filename = Path(external_path).name
+    return f"{base}/{filename}"
+
+
 def excel_col_width_to_px(width: float) -> float:
     # Approximation used for layout POC. Excel's exact width depends on default font metrics.
     return round(width * 7 + 5, 2)
@@ -406,6 +419,7 @@ def parse_drawing_picture(
     picture_index: int,
     resource_dir: Path,
     copied_images: Dict[str, str],
+    image_base_url: str,
 ) -> Dict[str, object]:
     nv = node.find(".//xdr:cNvPr", NS)
     blip = node.find(".//a:blip", NS)
@@ -413,6 +427,7 @@ def parse_drawing_picture(
     target = drawing_rels.get(rel_id, {}).get("target", "")
     image_path = resolve_package_path(drawing_path, target) if target else ""
     external_path = copy_image_resource(package, image_path, resource_dir, copied_images) if image_path else ""
+    image_src = drawio_image_source(external_path, image_base_url)
     ext = anchor_info.get("ext") or {}
     return {
         "id": f"pic-{picture_index}",
@@ -426,6 +441,7 @@ def parse_drawing_picture(
         "height": ext.get("height", 80),
         "image_ref_type": "external_path",
         "external_path": external_path,
+        "drawio_image_src": image_src,
     }
 
 
@@ -437,6 +453,7 @@ def parse_drawings(
     cols: List[Dict[str, object]],
     resource_dir: Path,
     copied_images: Dict[str, str],
+    image_base_url: str,
 ) -> Tuple[List[Dict[str, object]], List[Dict[str, object]]]:
     if drawing_path not in package.namelist():
         return [], []
@@ -456,7 +473,7 @@ def parse_drawings(
         for child in list(anchor):
             if child.tag.endswith("sp") or child.tag.endswith("cxnSp") or child.tag.endswith("pic"):
                 if child.tag.endswith("pic"):
-                    drawings.append(parse_drawing_picture(package, child, anchor_info, drawing_rels, drawing_path, picture_index, resource_dir, copied_images))
+                    drawings.append(parse_drawing_picture(package, child, anchor_info, drawing_rels, drawing_path, picture_index, resource_dir, copied_images, image_base_url))
                     picture_index += 1
                 else:
                     drawings.append(parse_drawing_shape(child, anchor_info))
@@ -465,7 +482,7 @@ def parse_drawings(
                 for group_child in list(child):
                     if group_child.tag.endswith("sp") or group_child.tag.endswith("cxnSp") or group_child.tag.endswith("pic"):
                         if group_child.tag.endswith("pic"):
-                            drawings.append(parse_drawing_picture(package, group_child, anchor_info, drawing_rels, drawing_path, picture_index, resource_dir, copied_images))
+                            drawings.append(parse_drawing_picture(package, group_child, anchor_info, drawing_rels, drawing_path, picture_index, resource_dir, copied_images, image_base_url))
                             picture_index += 1
                         else:
                             drawings.append(parse_drawing_shape(group_child, anchor_info, group_transform))
@@ -503,7 +520,7 @@ def nearest_vertex_id(edge: Dict[str, object], vertices: List[Dict[str, object]]
 
 
 # Keep media as external files so the Draw.io file does not contain large base64 blobs.
-def read_images(package: zipfile.ZipFile, resource_dir: Path, copied_images: Dict[str, str]) -> List[Dict[str, object]]:
+def read_images(package: zipfile.ZipFile, resource_dir: Path, copied_images: Dict[str, str], image_base_url: str) -> List[Dict[str, object]]:
     images = []
     for name in package.namelist():
         if not name.startswith("xl/media/"):
@@ -514,12 +531,13 @@ def read_images(package: zipfile.ZipFile, resource_dir: Path, copied_images: Dic
             "mime": image_mime(name),
             "image_ref_type": "external_path",
             "external_path": external_path,
+            "drawio_image_src": drawio_image_source(external_path, image_base_url),
         })
     return images
 
 
 # Main xlsx -> intermediate JSON pipeline.
-def build_intermediate(xlsx_path: Path, output_dir: Path) -> Dict[str, object]:
+def build_intermediate(xlsx_path: Path, output_dir: Path, image_base_url: str) -> Dict[str, object]:
     resource_dir = output_dir / RESOURCE_DIR_NAME
     if resource_dir.exists():
         shutil.rmtree(resource_dir)
@@ -528,7 +546,7 @@ def build_intermediate(xlsx_path: Path, output_dir: Path) -> Dict[str, object]:
         shared_strings = read_shared_strings(package)
         styles = parse_styles(package)
         sheet_defs = parse_workbook(package)
-        images = read_images(package, resource_dir, copied_images)
+        images = read_images(package, resource_dir, copied_images, image_base_url)
         sheets = []
         for sheet_def in sheet_defs:
             sheet_root = read_xml(package, sheet_def["path"])
@@ -541,7 +559,7 @@ def build_intermediate(xlsx_path: Path, output_dir: Path) -> Dict[str, object]:
             for rel in sheet_rels.values():
                 if rel["type"].endswith("/drawing"):
                     drawing_path = resolve_package_path(sheet_def["path"], rel["target"])
-                    drawing_items, anchor_items = parse_drawings(package, drawing_path, rows, cols, resource_dir, copied_images)
+                    drawing_items, anchor_items = parse_drawings(package, drawing_path, rows, cols, resource_dir, copied_images, image_base_url)
                     drawings.extend(drawing_items)
                     anchors.extend(anchor_items)
             sheets.append({
@@ -563,6 +581,7 @@ def build_intermediate(xlsx_path: Path, output_dir: Path) -> Dict[str, object]:
                 "format": "xlsx-zip",
                 "image_output": "external_path",
                 "resources_dir": RESOURCE_DIR_NAME,
+                "image_base_url": image_base_url,
                 "sheets_count": len(sheets),
             },
             "sheets": sheets,
@@ -771,7 +790,7 @@ def append_image_vertices(xml_cells: List[str], sheet: Dict[str, object]) -> Non
         if image.get("kind") != "image":
             continue
         cell_id = f"image-{image['id']}"
-        style = quoteattr(f"shape=image;html=1;imageAspect=0;aspect=fixed;image={image.get('external_path', '')};")
+        style = quoteattr(f"shape=image;html=1;imageAspect=0;aspect=fixed;image={image.get('drawio_image_src', '')};")
         xml_cells.append(f'        <mxCell id="{cell_id}" value="" style={style} vertex="1" parent="1">')
         xml_cells.append(f'          <mxGeometry x="{image.get("x", 0)}" y="{image.get("y", 0)}" width="{image.get("width", 120)}" height="{image.get("height", 80)}" as="geometry"/>')
         xml_cells.append("        </mxCell>")
@@ -824,12 +843,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="POC08: xlsx zip XML to Draw.io with external image paths")
     parser.add_argument("--input", type=Path, default=default_input)
     parser.add_argument("--json", type=Path, default=script_dir / "poc08_intermediate.json")
-    parser.add_argument("--drawio", type=Path, default=script_dir / "poc08_output.drawio")
+    parser.add_argument("--drawio", type=Path, default=script_dir / "poc08_output.dio.xml")
+    parser.add_argument("--image-base-url", type=str, default=DEFAULT_IMAGE_BASE_URL)
     args = parser.parse_args()
 
     args.json.parent.mkdir(parents=True, exist_ok=True)
     args.drawio.parent.mkdir(parents=True, exist_ok=True)
-    intermediate = build_intermediate(args.input, args.drawio.parent)
+    intermediate = build_intermediate(args.input, args.drawio.parent, args.image_base_url)
     args.json.write_text(json.dumps(intermediate, ensure_ascii=False, indent=2), encoding="utf-8")
     args.drawio.write_text(make_drawio(intermediate), encoding="utf-8")
     print(f"Wrote {args.json}")
