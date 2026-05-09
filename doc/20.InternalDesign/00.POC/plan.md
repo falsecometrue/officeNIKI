@@ -23,6 +23,9 @@ Excel .xlsx → intermediate.json → Draw.io XML
 - 抽出結果はまず中間 JSON に保存する。
 - 中間 JSON から Markdown を生成する。
 - 画像は Markdown から参照できるリソースとして出力する。
+- Word 図形は Draw.io のような編集可能オブジェクトへの変換を前提にせず、以下を検討する。
+  - (a) 図形全体を画像として貼り付け、見た目の再現性を優先する。
+  - (b) 単純なフロー図は Mermaid として表現し、Markdown 上の編集性を優先する。
 
 ### 3.2 Excel → Draw.io
 - `.xlsx` または HTML エクスポートを解析し、シート、行、列、セル、スタイル、画像、図形、矢印、座標を抽出する。

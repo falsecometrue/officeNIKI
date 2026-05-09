@@ -1,0 +1,392 @@
+{
+  "document": {
+    "source": "/Users/sakiyama/Desktop/excel→md/doc/30.test/00.pocTestData/ペット プロフィール - スペアミント (1).docx",
+    "format": "docx"
+  },
+  "blocks": [
+    {
+      "type": "paragraph",
+      "index": 0,
+      "style": "Title",
+      "text": "ペットの名前",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 1,
+      "style": "Subtitle",
+      "text": "私の大切な友だち",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 2,
+      "style": "Normal",
+      "text": "",
+      "drawings": [
+        {
+          "doc_pr_id": "2",
+          "name": "image2.jpg",
+          "description": "pet_resume.jpg",
+          "size": {
+            "cx_emu": 2638425,
+            "cy_emu": 4105275,
+            "width_px": 277.0,
+            "height_px": 431.0
+          },
+          "type": "image",
+          "relationship_id": "rId6",
+          "resource": {
+            "source": "word/media/image2.jpg",
+            "path": "resources/image2.jpg",
+            "content_type_hint": "jpg",
+            "width_px": 800,
+            "height_px": 1200
+          }
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "index": 3,
+      "style": "Normal",
+      "text": "年齢: 4 歳\n性別: オス\n体重: 15 kg\n品種: 雑種",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 4,
+      "style": "Normal",
+      "text": "",
+      "drawings": [
+        {
+          "doc_pr_id": "4",
+          "name": "image1.png",
+          "description": "ドキュメントをセクションごとに分割する緑色の小さい四角形",
+          "size": {
+            "cx_emu": 419100,
+            "cy_emu": 28575,
+            "width_px": 44.0,
+            "height_px": 3.0
+          },
+          "type": "image",
+          "relationship_id": "rId7",
+          "resource": {
+            "source": "word/media/image1.png",
+            "path": "resources/image1.png",
+            "content_type_hint": "png",
+            "width_px": 44,
+            "height_px": 3
+          }
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "index": 5,
+      "style": "Heading1",
+      "text": "性格",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 6,
+      "style": "Normal",
+      "text": "ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入。",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 7,
+      "style": "Normal",
+      "text": "ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入。",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 8,
+      "style": "Normal",
+      "text": "",
+      "drawings": [
+        {
+          "doc_pr_id": "3",
+          "name": "image1.png",
+          "description": "ドキュメントをセクションごとに分割する緑色の小さい四角形",
+          "size": {
+            "cx_emu": 419100,
+            "cy_emu": 28575,
+            "width_px": 44.0,
+            "height_px": 3.0
+          },
+          "type": "image",
+          "relationship_id": "rId7",
+          "resource": {
+            "source": "word/media/image1.png",
+            "path": "resources/image1.png",
+            "content_type_hint": "png",
+            "width_px": 44,
+            "height_px": 3
+          }
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "index": 9,
+      "style": "Heading1",
+      "text": "健康とグルーミング",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 10,
+      "style": "Normal",
+      "text": "ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入。",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 11,
+      "style": "Normal",
+      "text": "ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入。",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 12,
+      "style": "Normal",
+      "text": "",
+      "drawings": [
+        {
+          "doc_pr_id": "5",
+          "name": "image1.png",
+          "description": "ドキュメントをセクションごとに分割する緑色の小さい四角形",
+          "size": {
+            "cx_emu": 419100,
+            "cy_emu": 28575,
+            "width_px": 44.0,
+            "height_px": 3.0
+          },
+          "type": "image",
+          "relationship_id": "rId7",
+          "resource": {
+            "source": "word/media/image1.png",
+            "path": "resources/image1.png",
+            "content_type_hint": "png",
+            "width_px": 44,
+            "height_px": 3
+          }
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "index": 13,
+      "style": "Heading1",
+      "text": "オーナーについて",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 14,
+      "style": "Normal",
+      "text": "ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入 ここにテキストを挿入。",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 15,
+      "style": "Normal",
+      "text": "",
+      "drawings": []
+    },
+    {
+      "type": "paragraph",
+      "index": 16,
+      "style": "Normal",
+      "text": "",
+      "drawings": [
+        {
+          "doc_pr_id": "1",
+          "name": "",
+          "description": null,
+          "size": {
+            "cx_emu": 4891088,
+            "cy_emu": 1025130,
+            "width_px": 513.5,
+            "height_px": 107.63
+          },
+          "type": "shape_text",
+          "text": "オブジェクトAオブジェクトB",
+          "labels": [
+            "オブジェクトA",
+            "オブジェクトB"
+          ],
+          "mermaid_candidate": {
+            "type": "flowchart_lr",
+            "code": "flowchart LR\n  A[オブジェクトA] --> B[オブジェクトB]",
+            "note": "図形内テキストから推定した候補。矢印や配置は docx XML だけでは確定できない。"
+          }
+        },
+        {
+          "doc_pr_id": "1",
+          "name": "image3.png",
+          "description": null,
+          "size": {
+            "cx_emu": 4891088,
+            "cy_emu": 1025130,
+            "width_px": 513.5,
+            "height_px": 107.63
+          },
+          "type": "image",
+          "relationship_id": "rId8",
+          "resource": {
+            "source": "word/media/image3.png",
+            "path": "resources/image3.png",
+            "content_type_hint": "png",
+            "width_px": 1,
+            "height_px": 1
+          }
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "index": 17,
+      "style": "Normal",
+      "text": "",
+      "drawings": []
+    }
+  ],
+  "images": [
+    {
+      "doc_pr_id": "2",
+      "name": "image2.jpg",
+      "description": "pet_resume.jpg",
+      "size": {
+        "cx_emu": 2638425,
+        "cy_emu": 4105275,
+        "width_px": 277.0,
+        "height_px": 431.0
+      },
+      "type": "image",
+      "relationship_id": "rId6",
+      "resource": {
+        "source": "word/media/image2.jpg",
+        "path": "resources/image2.jpg",
+        "content_type_hint": "jpg",
+        "width_px": 800,
+        "height_px": 1200
+      }
+    },
+    {
+      "doc_pr_id": "4",
+      "name": "image1.png",
+      "description": "ドキュメントをセクションごとに分割する緑色の小さい四角形",
+      "size": {
+        "cx_emu": 419100,
+        "cy_emu": 28575,
+        "width_px": 44.0,
+        "height_px": 3.0
+      },
+      "type": "image",
+      "relationship_id": "rId7",
+      "resource": {
+        "source": "word/media/image1.png",
+        "path": "resources/image1.png",
+        "content_type_hint": "png",
+        "width_px": 44,
+        "height_px": 3
+      }
+    },
+    {
+      "doc_pr_id": "3",
+      "name": "image1.png",
+      "description": "ドキュメントをセクションごとに分割する緑色の小さい四角形",
+      "size": {
+        "cx_emu": 419100,
+        "cy_emu": 28575,
+        "width_px": 44.0,
+        "height_px": 3.0
+      },
+      "type": "image",
+      "relationship_id": "rId7",
+      "resource": {
+        "source": "word/media/image1.png",
+        "path": "resources/image1.png",
+        "content_type_hint": "png",
+        "width_px": 44,
+        "height_px": 3
+      }
+    },
+    {
+      "doc_pr_id": "5",
+      "name": "image1.png",
+      "description": "ドキュメントをセクションごとに分割する緑色の小さい四角形",
+      "size": {
+        "cx_emu": 419100,
+        "cy_emu": 28575,
+        "width_px": 44.0,
+        "height_px": 3.0
+      },
+      "type": "image",
+      "relationship_id": "rId7",
+      "resource": {
+        "source": "word/media/image1.png",
+        "path": "resources/image1.png",
+        "content_type_hint": "png",
+        "width_px": 44,
+        "height_px": 3
+      }
+    },
+    {
+      "doc_pr_id": "1",
+      "name": "image3.png",
+      "description": null,
+      "size": {
+        "cx_emu": 4891088,
+        "cy_emu": 1025130,
+        "width_px": 513.5,
+        "height_px": 107.63
+      },
+      "type": "image",
+      "relationship_id": "rId8",
+      "resource": {
+        "source": "word/media/image3.png",
+        "path": "resources/image3.png",
+        "content_type_hint": "png",
+        "width_px": 1,
+        "height_px": 1
+      }
+    }
+  ],
+  "shapes": [
+    {
+      "doc_pr_id": "1",
+      "name": "",
+      "description": null,
+      "size": {
+        "cx_emu": 4891088,
+        "cy_emu": 1025130,
+        "width_px": 513.5,
+        "height_px": 107.63
+      },
+      "type": "shape_text",
+      "text": "オブジェクトAオブジェクトB",
+      "labels": [
+        "オブジェクトA",
+        "オブジェクトB"
+      ],
+      "mermaid_candidate": {
+        "type": "flowchart_lr",
+        "code": "flowchart LR\n  A[オブジェクトA] --> B[オブジェクトB]",
+        "note": "図形内テキストから推定した候補。矢印や配置は docx XML だけでは確定できない。"
+      }
+    }
+  ],
+  "conversion_notes": [
+    "段落/見出し/画像/表は Markdown へ直接変換する。",
+    "Word 図形は DrawingML の座標や形状情報が Markdown と対応しづらいため、画像化または Mermaid 化を検討対象にする。",
+    "本 POC は外部ライブラリを使わず、docx の zip/OpenXML を直接解析している。"
+  ]
+}
