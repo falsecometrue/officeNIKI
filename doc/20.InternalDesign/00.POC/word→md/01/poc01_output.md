@@ -2,12 +2,19 @@
 
 *私の大切な友だち*
 
-![pet_resume.jpg](resources/image2.jpg)
-
-年齢: 4 歳
-性別: オス
-体重: 15 kg
-品種: 雑種
+<table>
+  <tr>
+    <td width="40%" valign="top">
+      <img src="resources/image2.jpg" alt="pet_resume.jpg" width="260" />
+    </td>
+    <td width="60%" valign="top">
+      <p>年齢: 4 歳</p>
+      <p>性別: オス</p>
+      <p>体重: 15 kg</p>
+      <p>品種: 雑種</p>
+    </td>
+  </tr>
+</table>
 
 ![ドキュメントをセクションごとに分割する緑色の小さい四角形](resources/image1.png)
 
