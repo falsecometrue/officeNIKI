@@ -12,8 +12,23 @@
 |---|---|
 | `poc01_docx_to_md.py` | docx → 中間 JSON → Markdown の POC 実装 |
 | `poc01_intermediate.json` | 抽出した段落、見出し、画像、図形候補 |
-| `poc01_output.md` | Markdown 変換結果。画像横の説明文は HTML table で左右2カラム化 |
+| `poc01_output.md` | Markdown 変換結果 |
 | `resources/` | Markdown から参照する画像 |
+
+## 実行方法
+
+ファイル名を指定せずに実行すると、`doc/30.test/00.pocTestData` 配下の `.docx` が一覧表示され、番号で選択できる。
+
+```bash
+python3 doc/20.InternalDesign/00.POC/word→md/01/poc01_docx_to_md.py
+```
+
+ファイルを直接指定することもできる。
+
+```bash
+python3 doc/20.InternalDesign/00.POC/word→md/01/poc01_docx_to_md.py \
+  "doc/30.test/00.pocTestData/ペット プロフィール - スペアミント (1).docx"
+```
 
 ## サンプル docx の内部構造
 
@@ -60,29 +75,12 @@ flowchart LR
 3. `word/document.xml` から段落、見出し、表、画像、図形候補を抽出する。
 4. 抽出結果を `poc01_intermediate.json` に保存する。
 5. JSON から `poc01_output.md` を生成する。
-6. 画像だけの段落の直後に説明文段落がある場合は、Markdown内HTML tableで左画像・右文章として出力する。
-
-HTML table の出力例:
-
-```html
-<table>
-  <tr>
-    <td width="40%" valign="top">
-      <img src="resources/image2.jpg" alt="pet_resume.jpg" width="260" />
-    </td>
-    <td width="60%" valign="top">
-      <p>年齢: 4 歳</p>
-      <p>性別: オス</p>
-    </td>
-  </tr>
-</table>
-```
 
 ## 判断
 
 - Word → Markdown は、文章構造、画像、表を中心に変換するのが現実的。
 - 画像は base64 埋め込みではなく、`resources/` 配下の外部ファイルとして管理する。
-- 画像横の説明文は、標準 Markdown だけでは表現が弱いため HTML table を併用する。
+- HTML table による左右レイアウトは Markdown として読みづらいため、本 POC では通常の画像参照と段落に戻す。
 - 図形は Markdown の主目的から外れるため、まずは画像フォールバックを基本にする。
 - 単純なフロー図だけ Mermaid 化候補を出すと、Markdown の編集性を残せる。
 - 図形の見た目再現を重視する場合は、LibreOffice などでページまたは図形範囲をレンダリングして画像化する追加工程が必要。

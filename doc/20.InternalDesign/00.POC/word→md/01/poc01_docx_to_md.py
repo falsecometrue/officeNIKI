@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import argparse
-import html
 import json
 import re
 import shutil
@@ -22,6 +21,8 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+
+DEFAULT_INPUT_DIR = Path(__file__).resolve().parents[4] / "30.test" / "00.pocTestData"
 
 NS = {
     "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
@@ -318,41 +319,6 @@ def visible_image_drawings(block: dict[str, Any]) -> list[dict[str, Any]]:
     return images
 
 
-def is_image_only_block(block: dict[str, Any]) -> bool:
-    return block.get("type") == "paragraph" and not block.get("text") and bool(visible_image_drawings(block))
-
-
-def is_normal_text_block(block: dict[str, Any]) -> bool:
-    return block.get("type") == "paragraph" and block.get("style") == "Normal" and bool(block.get("text"))
-
-
-def html_paragraphs(text: str, indent: str = "") -> str:
-    """改行を持つ説明文をHTML table内で読みやすい段落にする。"""
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if not lines:
-        return ""
-    return "\n".join(f"{indent}<p>{html.escape(line)}</p>" for line in lines)
-
-
-def image_text_html_table(image_block: dict[str, Any], text_block: dict[str, Any]) -> str:
-    """画像の横に説明文があるWordレイアウトを、Markdown内HTML tableで表現する。"""
-    image = visible_image_drawings(image_block)[0]
-    resource = image["resource"]
-    alt = image.get("description") or image.get("name") or Path(resource["path"]).name
-    return "\n".join([
-        '<table>',
-        '  <tr>',
-        '    <td width="40%" valign="top">',
-        f'      <img src="{html.escape(resource["path"])}" alt="{html.escape(alt)}" width="260" />',
-        '    </td>',
-        '    <td width="60%" valign="top">',
-        html_paragraphs(text_block.get("text", ""), "      "),
-        '    </td>',
-        '  </tr>',
-        '</table>',
-    ])
-
-
 def markdown_for_block(block: dict[str, Any]) -> list[str]:
     if block["type"] == "table":
         table_md = markdown_table(block["rows"])
@@ -393,32 +359,36 @@ def markdown_for_block(block: dict[str, Any]) -> list[str]:
 
 def build_markdown(intermediate: dict[str, Any]) -> str:
     chunks: list[str] = []
-    blocks = intermediate["blocks"]
-    index = 0
-    while index < len(blocks):
-        block = blocks[index]
-
-        # Wordで画像の右に説明文が配置されているような箇所は、
-        # Markdown内HTML tableにして左右2カラムの関係を保つ。
-        if (
-            is_image_only_block(block)
-            and index + 1 < len(blocks)
-            and is_normal_text_block(blocks[index + 1])
-        ):
-            chunks.append(image_text_html_table(block, blocks[index + 1]))
-            index += 2
-            continue
-
+    for block in intermediate["blocks"]:
         lines = markdown_for_block(block)
         if lines:
             chunks.append("\n".join(lines))
-        index += 1
     return "\n\n".join(chunks).rstrip() + "\n"
+
+
+def select_source_docx(input_dir: Path) -> Path:
+    """引数未指定時に、候補一覧から変換対象の docx を選択する。"""
+    candidates = sorted(input_dir.glob("*.docx"))
+    if not candidates:
+        raise FileNotFoundError(f"docx ファイルが見つかりません: {input_dir}")
+
+    print("変換対象の Word ファイルを選択してください。")
+    for index, candidate in enumerate(candidates, start=1):
+        print(f"{index}: {candidate.name}")
+
+    while True:
+        selected = input("番号を入力: ").strip()
+        if selected.isdigit():
+            index = int(selected)
+            if 1 <= index <= len(candidates):
+                return candidates[index - 1]
+        print(f"1 から {len(candidates)} の番号を入力してください。")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="POC01 docx to intermediate JSON and Markdown")
-    parser.add_argument("source_docx", type=Path)
+    parser.add_argument("source_docx", type=Path, nargs="?", help="変換対象の .docx。未指定なら一覧から選択する")
+    parser.add_argument("--input-dir", type=Path, default=DEFAULT_INPUT_DIR, help="一覧選択で検索する .docx 配置フォルダ")
     parser.add_argument("--out-dir", type=Path, default=Path(__file__).resolve().parent)
     parser.add_argument("--json", type=str, default="poc01_intermediate.json")
     parser.add_argument("--md", type=str, default="poc01_output.md")
@@ -426,7 +396,8 @@ def main() -> None:
 
     out_dir = args.out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    intermediate = parse_docx(args.source_docx.resolve(), out_dir)
+    source_docx = args.source_docx.resolve() if args.source_docx else select_source_docx(args.input_dir.resolve())
+    intermediate = parse_docx(source_docx, out_dir)
 
     (out_dir / args.json).write_text(
         json.dumps(intermediate, ensure_ascii=False, indent=2),
