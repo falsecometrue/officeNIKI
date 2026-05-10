@@ -1,11 +1,11 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const AdmZip = require("adm-zip");
 const { XMLParser } = require("fast-xml-parser");
 const { convertXlsxToDrawio } = require("../out/converters/xlsxToDrawio");
+const { asArray, copyFixture, unitTestDataDir } = require("./helpers");
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -13,23 +13,10 @@ const parser = new XMLParser({
   removeNSPrefix: true
 });
 
-const projectRoot = path.resolve(__dirname, "..");
-const repoRoot = path.resolve(projectRoot, "..");
-const testDataDir = path.join(
-  repoRoot,
-  "doc",
-  "30.developAndTest",
-  "01.unitTest",
-  "UT_F01_excel→drowio変換機能",
-  "testData"
-);
+const testDataDir = unitTestDataDir("UT_F01_excel→drowio変換機能");
 
 function copyTestWorkbook(name) {
-  const source = path.join(testDataDir, name);
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "office-to-mdrow-f01-"));
-  const copied = path.join(tempDir, name);
-  fs.copyFileSync(source, copied);
-  return copied;
+  return copyFixture(testDataDir, name, "office-to-mdrow-f01-");
 }
 
 async function convertFixture(name) {
@@ -38,13 +25,6 @@ async function convertFixture(name) {
   const xml = fs.readFileSync(drawioPath, "utf8");
   const parsed = parser.parse(xml);
   return { workbookPath, drawioPath, xml, parsed };
-}
-
-function asArray(value) {
-  if (value === undefined || value === null) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
 }
 
 function workbookSheetNames(workbookPath) {

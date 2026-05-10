@@ -11,7 +11,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onStartupFinished",
+    "onView:workbench.view.testing",
     "onCommand:officeToMdrow.convertExcelToDrawio",
     "onCommand:officeToMdrow.convertWordToMarkdown",
     "onCommand:officeToMdrow.convertOfficeFile"
