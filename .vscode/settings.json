@@ -1,0 +1,16 @@
+{
+  "nodejs-testing.include": [
+    "office-to-mdrow/test"
+  ],
+  "nodejs-testing.exclude": [
+    "**/node_modules/**",
+    "**/.vscode-test/**"
+  ],
+  "nodejs-testing.pretest": [
+    "npm",
+    "--prefix",
+    "office-to-mdrow",
+    "run",
+    "compile"
+  ]
+}

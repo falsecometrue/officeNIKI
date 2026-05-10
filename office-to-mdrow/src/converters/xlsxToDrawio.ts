@@ -716,7 +716,9 @@ function drawioDiagramXml(sheet: Dict, index: number): string[] {
 function makeDrawio(intermediate: Dict): string {
   const cells = ['<?xml version="1.0" encoding="UTF-8"?>', '<mxfile host="app.diagrams.net">'];
   (intermediate.sheets || []).forEach((sheet: Dict, index: number) => {
-    cells.push(...drawioDiagramXml(sheet, index + 1));
+    for (const line of drawioDiagramXml(sheet, index + 1)) {
+      cells.push(line);
+    }
   });
   cells.push("</mxfile>");
   return cells.join("\n");

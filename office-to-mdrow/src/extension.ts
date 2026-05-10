@@ -2,6 +2,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { convertDocxToMarkdown } from "./converters/docxToMarkdown";
 import { convertXlsxToDrawio } from "./converters/xlsxToDrawio";
+import { registerF01XlsxToDrawioTests } from "./testController";
 
 const output = vscode.window.createOutputChannel("office to mdrow");
 
@@ -9,6 +10,7 @@ type ConvertKind = "excel-drawio" | "word-md";
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(output);
+  registerF01XlsxToDrawioTests(context);
   context.subscriptions.push(
     vscode.commands.registerCommand("officeToMdrow.convertExcelToDrawio", (uri?: vscode.Uri) =>
       convertSelectedFile(uri, "excel-drawio")

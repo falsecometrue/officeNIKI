@@ -1,0 +1,14 @@
+{
+  "nodejs-testing.include": [
+    "test"
+  ],
+  "nodejs-testing.exclude": [
+    "**/node_modules/**",
+    "**/.vscode-test/**"
+  ],
+  "nodejs-testing.pretest": [
+    "npm",
+    "run",
+    "compile"
+  ]
+}

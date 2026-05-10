@@ -11,6 +11,7 @@
     "Other"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onCommand:officeToMdrow.convertExcelToDrawio",
     "onCommand:officeToMdrow.convertWordToMarkdown",
     "onCommand:officeToMdrow.convertOfficeFile"
@@ -48,6 +49,8 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
+    "test": "npm run compile && node --test test/*.test.js",
+    "test:vscode": "npm run compile && node test/run-vscode-tests.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package"
   },
@@ -55,6 +58,7 @@
     "@types/adm-zip": "^0.5.8",
     "@types/node": "^20.11.30",
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^2.26.1",
     "typescript": "^5.4.5"
   },
