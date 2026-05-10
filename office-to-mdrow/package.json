@@ -1,0 +1,70 @@
+{
+  "name": "office-to-mdrow",
+  "displayName": "office to mdrow",
+  "description": "Convert Office files from the VS Code explorer context menu.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:officeToMdrow.convertExcelToDrawio",
+    "onCommand:officeToMdrow.convertWordToMarkdown",
+    "onCommand:officeToMdrow.convertOfficeFile"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "officeToMdrow.convertExcelToDrawio",
+        "title": "Convert Excel to Draw.io "
+      },
+      {
+        "command": "officeToMdrow.convertWordToMarkdown",
+        "title": "Convert Word to Markdown に変換"
+      },
+      {
+        "command": "officeToMdrow.convertOfficeFile",
+        "title": "Convert Office : 選択ファイルを変換"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "officeToMdrow.convertExcelToDrawio",
+          "when": "resourceExtname == .xlsx",
+          "group": "navigation@50"
+        },
+        {
+          "command": "officeToMdrow.convertWordToMarkdown",
+          "when": "resourceExtname == .docx",
+          "group": "navigation@51"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "office to mdrow",
+      "properties": {
+        "officeToMdrow.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "変換スクリプト実行に使用するPythonコマンド。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.4.5",
+    "@vscode/vsce": "^2.26.1"
+  }
+}
