@@ -3,7 +3,12 @@
   "displayName": "office to mdrow",
   "description": "Convert Office files from the VS Code explorer context menu.",
   "version": "0.0.1",
-  "publisher": "local",
+  "publisher": "SAKIYAMA-KANAU",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/falsecometrue/officeNIKI.git",
+    "directory": "office-to-mdrow"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
