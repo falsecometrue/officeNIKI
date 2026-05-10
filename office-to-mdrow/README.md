@@ -1,4 +1,4 @@
-# office to mdrow
+# office to mdraw
 
 Convert Microsoft Office files from the VS Code Explorer context menu.
 
@@ -6,11 +6,11 @@ The extension currently converts Excel and Word files into editable text-based f
 
 ## Supported Conversions
 
-| Input     | Output                     | Status                                             |
-| --------- | -------------------------- | -------------------------------------------------- |
-| `.xlsx` | `.drawio`                | Supported                                          |
-| `.docx` | `.md` and `resources/` | Supported                                          |
-| `.pptx` | Marp Markdown              | Not implemented yet. Planned for a future release. |
+| Input | Output | Status |
+|---|---|---|
+| `.xlsx` | `.drawio` | Supported |
+| `.docx` | `.md` and `resources/` | Supported |
+| `.pptx` | Marp Markdown | Not implemented yet. Planned for a future release. |
 
 ## How to Use
 
@@ -18,19 +18,23 @@ The extension currently converts Excel and Word files into editable text-based f
 2. Right-click an Office file in the Explorer.
 3. Select one of the conversion commands:
 
-   - `Convert Excel to Draw.io`![1778455217913](image/README/1778455217913.png)
+   - `Convert Excel to Draw.io`
+
+     ![Convert Excel to Draw.io context menu](image/README/1778455217913.png)
+
    - `Convert Word to Markdown`
 
-     ![1778455291868](image/README/1778455291868.png)
+     ![Convert Word to Markdown context menu](image/README/1778455291868.png)
+
 4. The converted file is created in the same folder as the source file.
 
-   `Excel to Draw.io` result
+   Excel to Draw.io result:
 
-   ![1778455462127](image/README/1778455462127.png)
+   ![Excel to Draw.io conversion result](image/README/1778455462127.png)
 
-   `word to md` result
+   Word to Markdown result:
 
-   ![1778455542849](image/README/1778455542849.png)
+   ![Word to Markdown conversion result](image/README/1778455542849.png)
 
 ## Conversion Details
 
@@ -63,24 +67,6 @@ No Python installation is required. The conversion logic is implemented in TypeS
 - All conversion runs locally on your machine.
 - Selected Office file contents are used only to generate the converted output.
 - This extension does not upload Office files or conversion results to any external server.
-
-## Development
-
-```bash
-npm install
-npm run compile
-```
-
-Open this folder in VS Code and start the Extension Development Host.
-
-## Project Structure
-
-| Path                                 | Description                    |
-| ------------------------------------ | ------------------------------ |
-| `src/extension.ts`                 | VS Code extension entry point  |
-| `src/converters/xlsxToDrawio.ts`   | Excel to Draw.io conversion    |
-| `src/converters/docxToMarkdown.ts` | Word to Markdown conversion    |
-| `src/converters/shared.ts`         | Shared Office Open XML helpers |
 
 ## Output Policy
 

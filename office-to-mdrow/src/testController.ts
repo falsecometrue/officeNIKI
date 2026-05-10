@@ -33,7 +33,7 @@ const parser = new XMLParser({
 export function registerOfficeToMdrowTests(context: vscode.ExtensionContext): void {
   const controller = vscode.tests.createTestController(
     "officeToMdrowTests",
-    "office-to-mdrow"
+    "office-to-mdraw"
   );
   context.subscriptions.push(controller);
 
@@ -168,7 +168,7 @@ async function convertDocxFixture(testDataDir: string, fixtureName: string): Pro
 
 function copyTestFile(testDataDir: string, fixtureName: string): string {
   const source = path.join(testDataDir, fixtureName);
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "office-to-mdrow-test-ui-"));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "office-to-mdraw-test-ui-"));
   const copied = path.join(tempDir, fixtureName);
   fs.copyFileSync(source, copied);
   return copied;

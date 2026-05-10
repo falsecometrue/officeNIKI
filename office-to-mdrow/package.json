@@ -1,9 +1,10 @@
 {
-  "name": "office-to-mdrow",
-  "displayName": "office to mdrow",
+  "name": "office-to-mdraw",
+  "displayName": "office to mdraw",
   "description": "Convert Office files from the VS Code explorer context menu.",
   "version": "0.0.1",
   "publisher": "SAKIYAMA-KANAU",
+  "icon": "image/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/falsecometrue/officeNIKI.git",
@@ -26,11 +27,11 @@
     "commands": [
       {
         "command": "officeToMdrow.convertExcelToDrawio",
-        "title": "【office to mdrow】 Convert Excel to Draw.io"
+        "title": "【office to mdraw】 Convert Excel to Draw.io"
       },
       {
         "command": "officeToMdrow.convertWordToMarkdown",
-        "title": "【office to mdrow】 Convert Word to Markdown"
+        "title": "【office to mdraw】 Convert Word to Markdown"
       },
       {
         "command": "officeToMdrow.convertOfficeFile",

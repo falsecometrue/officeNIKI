@@ -4,7 +4,7 @@ import { convertDocxToMarkdown } from "./converters/docxToMarkdown";
 import { convertXlsxToDrawio } from "./converters/xlsxToDrawio";
 import { registerOfficeToMdrowTests } from "./testController";
 
-const output = vscode.window.createOutputChannel("office to mdrow");
+const output = vscode.window.createOutputChannel("office to mdraw");
 
 type ConvertKind = "excel-drawio" | "word-md";
 
@@ -71,7 +71,7 @@ function kindFromPath(filePath: string): ConvertKind | undefined {
 
 async function runConverter(kind: ConvertKind, sourcePath: string): Promise<string> {
   output.show(true);
-  output.appendLine(`> office-to-mdrow ${kind} ${sourcePath}`);
+  output.appendLine(`> office-to-mdraw ${kind} ${sourcePath}`);
   try {
     const generatedPath = kind === "excel-drawio"
       ? await convertXlsxToDrawio(sourcePath)
