@@ -18,16 +18,16 @@ npm run compile
 
 VS Codeでこのフォルダを開き、拡張機能ホストを起動する。
 
-Pythonは `officeToMdrow.pythonPath` 設定で変更できる。デフォルトは `python3`。
-
 ## 構成
 
 | パス | 内容 |
 |---|---|
 | `src/extension.ts` | VS Code拡張機能のエントリポイント |
-| `scripts/convert.py` | 拡張機能から呼び出す変換ラッパー |
-| `scripts/xlsx_to_drawio.py` | Excel→Draw.io変換処理 |
-| `scripts/docx_to_md.py` | Word→Markdown変換処理 |
+| `src/converters/xlsxToDrawio.ts` | Excel→Draw.io変換処理 |
+| `src/converters/docxToMarkdown.ts` | Word→Markdown変換処理 |
+| `src/converters/shared.ts` | Office Open XML解析の共通処理 |
+
+変換処理はTypeScriptで実装しているため、利用者の環境にPythonは不要。
 
 ## 出力方針
 

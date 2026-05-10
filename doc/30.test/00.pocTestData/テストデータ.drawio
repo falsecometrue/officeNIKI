@@ -1,0 +1,28 @@
+<mxfile host="65bd71144e">
+    <diagram id="POC06-1" name="シート1">
+        <mxGraphModel dx="854" dy="335" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="table-17-2-20-5" value="&lt;table style=&quot;border-collapse:collapse;table-layout:fixed;width:100%;height:100%;font-family:Arial,sans-serif;&quot;&gt;&lt;tr&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:93.41px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;no&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:168.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;title&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:237.75px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;detail&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:210.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;memo&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:93.41px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;1&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:168.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;オブジェクトA&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:237.75px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;青, 中央テキスト：”オブジェクトA”&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:210.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:93.41px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;2&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:168.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;右矢印&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:237.75px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;オブジェクトAからオブジェクトBへの矢印&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:210.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;細&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:93.41px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;3&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:168.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;オブジェクトB&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:237.75px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;赤, 中央テキスト：”オブジェクトB”&lt;/td&gt;&lt;td style=&quot;border:1px solid #000000;background:#FFFFFF;text-align:center;vertical-align:middle;width:210.66px;height:21px;font-size:11px;padding:0;box-sizing:border-box;&quot;&gt;-&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;" style="html=1;whiteSpace=wrap;overflow=fill;rounded=0;fillColor=none;strokeColor=none;" parent="1" vertex="1">
+                    <mxGeometry x="133.41" y="380" width="710.48" height="84" as="geometry"/>
+                </mxCell>
+                <mxCell id="cell-A1" value="サンプルテスト" style="text;html=1;fillColor=none;strokeColor=none;align=center;verticalAlign=middle;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="40" width="93.41" height="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="cell-A24" value="end" style="text;html=1;fillColor=none;strokeColor=none;align=center;verticalAlign=middle;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="523" width="93.41" height="21" as="geometry"/>
+                </mxCell>
+                <mxCell id="shape-3" value="オブジェクトA" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#CFE2F3;strokeColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="135" y="106" width="263.28" height="213.13" as="geometry"/>
+                </mxCell>
+                <mxCell id="shape-5" value="オブジェクトB" style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#EA9999;strokeColor=#000000;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="106" width="263.28" height="213.13" as="geometry"/>
+                </mxCell>
+                <mxCell id="edge-4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#000000;endArrow=classic;" parent="1" source="shape-3" target="shape-5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

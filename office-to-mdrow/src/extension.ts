@@ -1,6 +1,7 @@
 import * as path from "path";
-import { spawn } from "child_process";
 import * as vscode from "vscode";
+import { convertDocxToMarkdown } from "./converters/docxToMarkdown";
+import { convertXlsxToDrawio } from "./converters/xlsxToDrawio";
 
 const output = vscode.window.createOutputChannel("office to mdrow");
 
@@ -10,13 +11,13 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(output);
   context.subscriptions.push(
     vscode.commands.registerCommand("officeToMdrow.convertExcelToDrawio", (uri?: vscode.Uri) =>
-      convertSelectedFile(context, uri, "excel-drawio")
+      convertSelectedFile(uri, "excel-drawio")
     ),
     vscode.commands.registerCommand("officeToMdrow.convertWordToMarkdown", (uri?: vscode.Uri) =>
-      convertSelectedFile(context, uri, "word-md")
+      convertSelectedFile(uri, "word-md")
     ),
     vscode.commands.registerCommand("officeToMdrow.convertOfficeFile", (uri?: vscode.Uri) =>
-      convertSelectedFile(context, uri)
+      convertSelectedFile(uri)
     )
   );
 }
@@ -26,7 +27,6 @@ export function deactivate() {
 }
 
 async function convertSelectedFile(
-  context: vscode.ExtensionContext,
   uri: vscode.Uri | undefined,
   forcedKind?: ConvertKind
 ) {
@@ -49,7 +49,7 @@ async function convertSelectedFile(
       cancellable: false
     },
     async () => {
-      const generatedPath = await runConverter(context, kind, target.fsPath);
+      const generatedPath = await runConverter(kind, target.fsPath);
       vscode.window.showInformationMessage(`変換完了: ${path.basename(generatedPath)}`);
       await vscode.commands.executeCommand("revealFileInOS", vscode.Uri.file(generatedPath));
     }
@@ -67,54 +67,19 @@ function kindFromPath(filePath: string): ConvertKind | undefined {
   return undefined;
 }
 
-function runConverter(context: vscode.ExtensionContext, kind: ConvertKind, sourcePath: string): Promise<string> {
-  const config = vscode.workspace.getConfiguration("officeToMdrow");
-  const pythonPath = config.get<string>("pythonPath") || "python3";
-  const converter = context.asAbsolutePath(path.join("scripts", "convert.py"));
-
+async function runConverter(kind: ConvertKind, sourcePath: string): Promise<string> {
   output.show(true);
-  output.appendLine(`> ${pythonPath} ${converter} ${kind} ${sourcePath}`);
-
-  return new Promise((resolve, reject) => {
-    const child = spawn(pythonPath, [converter, kind, sourcePath], {
-      cwd: path.dirname(sourcePath)
-    });
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout.on("data", (data: Buffer) => {
-      const text = data.toString();
-      stdout += text;
-      output.append(text);
-    });
-
-    child.stderr.on("data", (data: Buffer) => {
-      const text = data.toString();
-      stderr += text;
-      output.append(text);
-    });
-
-    child.on("error", (error) => {
-      vscode.window.showErrorMessage(`変換に失敗しました: ${error.message}`);
-      reject(error);
-    });
-
-    child.on("close", (code) => {
-      if (code === 0) {
-        const generated = stdout.trim().split(/\r?\n/).pop();
-        resolve(generated || expectedOutputPath(kind, sourcePath));
-        return;
-      }
-
-      const message = stderr.trim() || stdout.trim() || `exit code ${code}`;
-      vscode.window.showErrorMessage(`変換に失敗しました: ${message}`);
-      reject(new Error(message));
-    });
-  });
-}
-
-function expectedOutputPath(kind: ConvertKind, sourcePath: string): string {
-  const parsed = path.parse(sourcePath);
-  const ext = kind === "excel-drawio" ? ".drawio" : ".md";
-  return path.join(parsed.dir, `${parsed.name}${ext}`);
+  output.appendLine(`> office-to-mdrow ${kind} ${sourcePath}`);
+  try {
+    const generatedPath = kind === "excel-drawio"
+      ? await convertXlsxToDrawio(sourcePath)
+      : await convertDocxToMarkdown(sourcePath);
+    output.appendLine(`Generated: ${generatedPath}`);
+    return generatedPath;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    output.appendLine(message);
+    vscode.window.showErrorMessage(`変換に失敗しました: ${message}`);
+    throw error;
+  }
 }

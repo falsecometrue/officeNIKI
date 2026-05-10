@@ -20,11 +20,11 @@
     "commands": [
       {
         "command": "officeToMdrow.convertExcelToDrawio",
-        "title": "Convert Excel to Draw.io "
+        "title": "Convert Excel to Draw.io"
       },
       {
         "command": "officeToMdrow.convertWordToMarkdown",
-        "title": "Convert Word to Markdown に変換"
+        "title": "Convert Word to Markdown"
       },
       {
         "command": "officeToMdrow.convertOfficeFile",
@@ -44,16 +44,6 @@
           "group": "navigation@51"
         }
       ]
-    },
-    "configuration": {
-      "title": "office to mdrow",
-      "properties": {
-        "officeToMdrow.pythonPath": {
-          "type": "string",
-          "default": "python3",
-          "description": "変換スクリプト実行に使用するPythonコマンド。"
-        }
-      }
     }
   },
   "scripts": {
@@ -62,9 +52,14 @@
     "package": "vsce package"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^20.11.30",
     "@types/vscode": "^1.90.0",
-    "typescript": "^5.4.5",
-    "@vscode/vsce": "^2.26.1"
+    "@vscode/vsce": "^2.26.1",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "fast-xml-parser": "^5.7.3"
   }
 }
