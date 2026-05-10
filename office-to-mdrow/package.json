@@ -26,11 +26,11 @@
     "commands": [
       {
         "command": "officeToMdrow.convertExcelToDrawio",
-        "title": "Convert Excel to Draw.io"
+        "title": "【office to mdrow】 Convert Excel to Draw.io"
       },
       {
         "command": "officeToMdrow.convertWordToMarkdown",
-        "title": "Convert Word to Markdown"
+        "title": "【office to mdrow】 Convert Word to Markdown"
       },
       {
         "command": "officeToMdrow.convertOfficeFile",
