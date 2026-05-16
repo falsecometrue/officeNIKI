@@ -19,6 +19,7 @@
   "activationEvents": [
     "onView:workbench.view.testing",
     "onCommand:officeToMdrow.convertExcelToDrawio",
+    "onCommand:officeToMdrow.convertExcelToMarkdown",
     "onCommand:officeToMdrow.convertWordToMarkdown",
     "onCommand:officeToMdrow.convertOfficeFile"
   ],
@@ -28,6 +29,10 @@
       {
         "command": "officeToMdrow.convertExcelToDrawio",
         "title": "【office to mdraw】 Convert Excel to Draw.io"
+      },
+      {
+        "command": "officeToMdrow.convertExcelToMarkdown",
+        "title": "【office to mdraw】 Convert Excel to Markdown"
       },
       {
         "command": "officeToMdrow.convertWordToMarkdown",
@@ -46,9 +51,14 @@
           "group": "navigation@50"
         },
         {
+          "command": "officeToMdrow.convertExcelToMarkdown",
+          "when": "resourceExtname == .xlsx",
+          "group": "navigation@51"
+        },
+        {
           "command": "officeToMdrow.convertWordToMarkdown",
           "when": "resourceExtname == .docx",
-          "group": "navigation@51"
+          "group": "navigation@52"
         }
       ]
     }

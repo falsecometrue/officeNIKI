@@ -23,11 +23,12 @@ const DEFAULT_ROW_HEIGHT_PT = 15.75;
 const SHEET_ORIGIN_X = 40;
 const SHEET_ORIGIN_Y = 40;
 
-type Dict = Record<string, any>;
+export type XlsxDict = Record<string, any>;
+type Dict = XlsxDict;
 
 export async function convertXlsxToDrawio(sourcePath: string): Promise<string> {
   const drawioPath = path.join(path.dirname(sourcePath), `${path.parse(sourcePath).name}.drawio`);
-  const intermediate = buildIntermediate(sourcePath);
+  const intermediate = buildXlsxIntermediate(sourcePath);
   fs.writeFileSync(drawioPath, makeDrawio(intermediate), "utf8");
   return drawioPath;
 }
@@ -457,7 +458,7 @@ function readImages(zip: AdmZip): Dict[] {
     });
 }
 
-function buildIntermediate(xlsxPath: string): Dict {
+export function buildXlsxIntermediate(xlsxPath: string): Dict {
   const zip = new AdmZip(xlsxPath);
   const sharedStrings = readSharedStrings(zip);
   const styles = parseStyles(zip);

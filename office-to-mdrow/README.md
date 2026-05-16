@@ -9,6 +9,7 @@ The extension currently converts Excel and Word files into editable text-based f
 | Input | Output | Status |
 |---|---|---|
 | `.xlsx` | `.drawio` | Supported |
+| `.xlsx` | `.md` and `resources/` | Supported |
 | `.docx` | `.md` and `resources/` | Supported |
 | `.pptx` | Marp Markdown | Not implemented yet. Planned for a future release. |
 
@@ -21,6 +22,8 @@ The extension currently converts Excel and Word files into editable text-based f
    - `Convert Excel to Draw.io`
 
      ![Convert Excel to Draw.io context menu](https://raw.githubusercontent.com/comecomenakau/officeNIKI/30.developAndTest/office-to-mdrow/image/README/1778455217913.png)
+
+   - `Convert Excel to Markdown`
 
    - `Convert Word to Markdown`
 
@@ -45,6 +48,15 @@ The extension currently converts Excel and Word files into editable text-based f
 - Converts cell text, basic tables, shapes, connectors, and embedded images.
 - Embeds Excel images as base64 data URIs inside the Draw.io XML.
 - Outputs a `.drawio` file next to the source workbook.
+
+### Excel to Markdown
+
+- Reads `.xlsx` files as Office Open XML.
+- Outputs a folder named after the workbook.
+- Writes one Markdown file named after the workbook.
+- Groups each sheet under a `# シート名` heading.
+- Exports sheet images into `resources/` as `シート名-1.png`, `シート名-2.png`, and so on.
+- References images from Markdown using relative paths.
 
 ### Word to Markdown
 
@@ -72,4 +84,5 @@ No Python installation is required. The conversion logic is implemented in TypeS
 
 - Intermediate JSON is not kept as a final output.
 - Word images are written to `resources/`.
-- Excel images are embedded in the Draw.io XML.
+- Excel Draw.io images are embedded in the Draw.io XML.
+- Excel Markdown images are written to `resources/`.

@@ -2,11 +2,12 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { convertDocxToMarkdown } from "./converters/docxToMarkdown";
 import { convertXlsxToDrawio } from "./converters/xlsxToDrawio";
+import { convertXlsxToMarkdown } from "./converters/xlsxToMarkdown";
 import { registerOfficeToMdrowTests } from "./testController";
 
 const output = vscode.window.createOutputChannel("office to mdraw");
 
-type ConvertKind = "excel-drawio" | "word-md";
+type ConvertKind = "excel-drawio" | "excel-md" | "word-md";
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(output);
@@ -14,6 +15,9 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand("officeToMdrow.convertExcelToDrawio", (uri?: vscode.Uri) =>
       convertSelectedFile(uri, "excel-drawio")
+    ),
+    vscode.commands.registerCommand("officeToMdrow.convertExcelToMarkdown", (uri?: vscode.Uri) =>
+      convertSelectedFile(uri, "excel-md")
     ),
     vscode.commands.registerCommand("officeToMdrow.convertWordToMarkdown", (uri?: vscode.Uri) =>
       convertSelectedFile(uri, "word-md")
@@ -61,7 +65,7 @@ async function convertSelectedFile(
 function kindFromPath(filePath: string): ConvertKind | undefined {
   const ext = path.extname(filePath).toLowerCase();
   if (ext === ".xlsx") {
-    return "excel-drawio";
+    return "excel-md";
   }
   if (ext === ".docx") {
     return "word-md";
@@ -75,7 +79,9 @@ async function runConverter(kind: ConvertKind, sourcePath: string): Promise<stri
   try {
     const generatedPath = kind === "excel-drawio"
       ? await convertXlsxToDrawio(sourcePath)
-      : await convertDocxToMarkdown(sourcePath);
+      : kind === "excel-md"
+        ? await convertXlsxToMarkdown(sourcePath)
+        : await convertDocxToMarkdown(sourcePath);
     output.appendLine(`Generated: ${generatedPath}`);
     return generatedPath;
   } catch (error) {
