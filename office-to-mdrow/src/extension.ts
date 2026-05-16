@@ -1,13 +1,14 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { convertDocxToMarkdown } from "./converters/docxToMarkdown";
+import { convertPptxToMarp } from "./converters/pptxToMarp";
 import { convertXlsxToDrawio } from "./converters/xlsxToDrawio";
 import { convertXlsxToMarkdown } from "./converters/xlsxToMarkdown";
 import { registerOfficeToMdrowTests } from "./testController";
 
 const output = vscode.window.createOutputChannel("office to mdraw");
 
-type ConvertKind = "excel-drawio" | "excel-md" | "word-md";
+type ConvertKind = "excel-drawio" | "excel-md" | "word-md" | "powerpoint-marp";
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(output);
@@ -21,6 +22,9 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("officeToMdrow.convertWordToMarkdown", (uri?: vscode.Uri) =>
       convertSelectedFile(uri, "word-md")
+    ),
+    vscode.commands.registerCommand("officeToMdrow.convertPowerPointToMarp", (uri?: vscode.Uri) =>
+      convertSelectedFile(uri, "powerpoint-marp")
     ),
     vscode.commands.registerCommand("officeToMdrow.convertOfficeFile", (uri?: vscode.Uri) =>
       convertSelectedFile(uri)
@@ -44,7 +48,7 @@ async function convertSelectedFile(
 
   const kind = forcedKind ?? kindFromPath(target.fsPath);
   if (!kind) {
-    vscode.window.showErrorMessage(".xlsx または .docx を選択してください。");
+    vscode.window.showErrorMessage(".xlsx, .docx, .pptx のいずれかを選択してください。");
     return;
   }
 
@@ -70,6 +74,9 @@ function kindFromPath(filePath: string): ConvertKind | undefined {
   if (ext === ".docx") {
     return "word-md";
   }
+  if (ext === ".pptx") {
+    return "powerpoint-marp";
+  }
   return undefined;
 }
 
@@ -81,7 +88,9 @@ async function runConverter(kind: ConvertKind, sourcePath: string): Promise<stri
       ? await convertXlsxToDrawio(sourcePath)
       : kind === "excel-md"
         ? await convertXlsxToMarkdown(sourcePath)
-        : await convertDocxToMarkdown(sourcePath);
+        : kind === "powerpoint-marp"
+          ? await convertPptxToMarp(sourcePath)
+          : await convertDocxToMarkdown(sourcePath);
     output.appendLine(`Generated: ${generatedPath}`);
     return generatedPath;
   } catch (error) {

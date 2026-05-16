@@ -21,6 +21,7 @@
     "onCommand:officeToMdrow.convertExcelToDrawio",
     "onCommand:officeToMdrow.convertExcelToMarkdown",
     "onCommand:officeToMdrow.convertWordToMarkdown",
+    "onCommand:officeToMdrow.convertPowerPointToMarp",
     "onCommand:officeToMdrow.convertOfficeFile"
   ],
   "main": "./out/extension.js",
@@ -37,6 +38,10 @@
       {
         "command": "officeToMdrow.convertWordToMarkdown",
         "title": "【office to mdraw】 Convert Word to Markdown"
+      },
+      {
+        "command": "officeToMdrow.convertPowerPointToMarp",
+        "title": "【office to mdraw】 Convert PowerPoint to Marp"
       },
       {
         "command": "officeToMdrow.convertOfficeFile",
@@ -59,6 +64,11 @@
           "command": "officeToMdrow.convertWordToMarkdown",
           "when": "resourceExtname == .docx",
           "group": "navigation@52"
+        },
+        {
+          "command": "officeToMdrow.convertPowerPointToMarp",
+          "when": "resourceExtname == .pptx",
+          "group": "navigation@53"
         }
       ]
     }

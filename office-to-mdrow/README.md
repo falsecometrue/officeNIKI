@@ -11,7 +11,7 @@ The extension currently converts Excel and Word files into editable text-based f
 | `.xlsx` | `.drawio` | Supported |
 | `.xlsx` | `.md` and `resources/` | Supported |
 | `.docx` | `.md` and `resources/` | Supported |
-| `.pptx` | Marp Markdown and `.drawio.svg` resources | Not implemented yet. Planned for a future release. |
+| `.pptx` | Marp Markdown and `.drawio.svg` slides | Supported |
 
 ## How to Use
 
@@ -28,6 +28,8 @@ The extension currently converts Excel and Word files into editable text-based f
    - `Convert Word to Markdown`
 
      ![Convert Word to Markdown context menu](https://raw.githubusercontent.com/comecomenakau/officeNIKI/30.developAndTest/office-to-mdrow/image/README/1778455291868.png)
+
+   - `Convert PowerPoint to Marp`
 
 4. The converted file is created in the same folder as the source file.
 
@@ -68,9 +70,9 @@ The extension currently converts Excel and Word files into editable text-based f
 
 ### PowerPoint to Marp
 
-PowerPoint `.pptx` to Marp Markdown conversion is not implemented yet. The planned design treats Marp as the display format and Draw.io SVG as the editable slide source.
+PowerPoint `.pptx` to Marp Markdown conversion treats Marp as the display format and Draw.io SVG as the editable slide source.
 
-Planned output:
+Output:
 
 ```text
 pptx-file-name/
@@ -80,7 +82,7 @@ pptx-file-name/
     slide002.drawio.svg
 ```
 
-Planned Marp structure:
+Marp structure:
 
 ```md
 ---
@@ -93,8 +95,6 @@ marp: true
 
 ![bg contain](slide/slide002.drawio.svg)
 ```
-
-Design policy:
 
 - Converts each PowerPoint slide into one `.drawio.svg` file.
 - Embeds slide images, backgrounds, shapes, and tables into that slide-level SVG.
@@ -120,4 +120,4 @@ No Python installation is required. The conversion logic is implemented in TypeS
 - Word images are written to `resources/`.
 - Excel Draw.io images are embedded in the Draw.io XML.
 - Excel Markdown images are written to `resources/`.
-- PowerPoint Marp output will reference editable `.drawio.svg` slide resources only, without separate `.drawio` files.
+- PowerPoint Marp output references editable `.drawio.svg` slide files only, without separate `.drawio` files.
