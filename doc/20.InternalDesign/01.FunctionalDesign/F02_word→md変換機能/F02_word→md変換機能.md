@@ -7,6 +7,10 @@
 変換処理では、Wordの解析結果を内部データ構造として保持し、その内容からMarkdownを生成する。
 内部データは処理上の一時情報であり、通常はファイルとして出力しない。
 
+変換結果は、まずAIが文書構造、意味、表、チャート内容を理解しやすいことを優先する。
+次に、人間がMarkdownとして視認、編集しやすいことを優先する。
+Wordの見た目を完全再現することは目的とせず、意味を落とさない範囲でHTML混在Markdownを採用する。
+
 ```text
 Word .docx
   → 内部変換データ
@@ -21,13 +25,14 @@ Word .docx
 | 内部変換データ | JSON相当の構造 |
 | Markdown出力 | `.md` |
 | 画面入力 | 画面上で対象Wordファイルを右クリックし、変換対象として選択する |
-| 出力先 | 入力Wordファイルと同一フォルダ |
+| 出力先 | 入力Wordファイルと同一フォルダに入力Wordファイル名のフォルダを作成し、その配下へ出力する |
 | 見出し | Markdown見出しへ変換する |
-| 段落 | Markdown本文へ変換する |
+| 段落 | Markdown本文へ変換する。文字装飾、文字色、文字サイズ、配置はHTML混在Markdownで補足する |
 | 箇条書き | Markdown listへ変換する |
 | 表 | Markdown tableへ変換する |
-| 画像 | `resources/` 配下へ外部ファイルとして出力し、Markdownから相対参照する |
-| Word図形 | Markdownで完全再現しづらいため、画像フォールバックまたはMermaid候補として扱う |
+| 画像 | `<入力Wordファイル名>resource/` 配下へ外部ファイルとして出力し、Markdownから相対参照する |
+| Word図形 | Markdownで完全再現しづらいため、Mermaid候補、構造化テキスト、画像フォールバックの順に扱う |
+| チャート | AI理解を優先し、Mermaid変換を先に試みる。難しい場合はデータ表として出力する |
 | HTML tableレイアウト | Markdownとして読みづらいため、基本採用しない |
 
 ## 3. 対象範囲
@@ -41,6 +46,7 @@ Word .docx
 - 箇条書き
 - 表
 - 画像
+- チャート
 - 単純なWord図形テキスト
 - 単純なフロー図のMermaid候補化
 
@@ -55,7 +61,7 @@ Word .docx
 - SmartArt、複雑図形の完全再現
 - テキストボックス、図形、画像の重なり順の完全再現
 
-対象外要素は、取得できる情報に応じて画像化、テキスト抽出、Mermaid候補化の順に扱う。
+対象外要素は、取得できる情報に応じてMermaid候補化、構造化テキストまたはデータ表、画像化、テキスト抽出の順に扱う。
 いずれの形式にも変換できない場合は警告として扱い、Markdown本文には出力しない。
 
 ## 4. 入出力
@@ -72,8 +78,8 @@ Word .docx
 | 出力 | 内容 |
 |---|---|
 | Markdown | 変換後の本文 |
-| resourcesフォルダ | Markdownから参照する画像ファイル |
-| 出力先 | 入力Wordファイルと同一フォルダ |
+| resourceフォルダ | Markdownから参照する画像ファイル |
+| 出力先 | 入力Wordファイルと同一フォルダに作成した入力Wordファイル名フォルダ |
 
 出力ファイル名は入力Wordファイル名を基準にする。
 
@@ -81,8 +87,8 @@ Word .docx
 
 | 入力 | 出力 |
 |---|---|
-| `/path/to/レポート.docx` | `/path/to/レポート.md` |
-| `/path/to/レポート.docx` 内の画像 | `/path/to/resources/image1.png` |
+| `/path/to/レポート.docx` | `/path/to/レポート/レポート.md` |
+| `/path/to/レポート.docx` 内の画像 | `/path/to/レポート/レポートresource/image1.png` |
 
 ## 5. 全体処理フロー
 
@@ -98,14 +104,14 @@ flowchart TD
         E1[選択された.docxを受け取る]
         E2[.docxをzipとして開く]
         E3[document.xmlから本文ブロックを取得]
-        E4[styles.xmlから段落スタイルを取得]
+        E4[styles.xmlから段落・文字スタイルを取得]
         E5[numbering.xmlから箇条書き情報を取得]
-        E6[document.xml.relsから画像参照を解決]
-        E7[段落・見出し・表・画像・図形候補を解析]
+        E6[document.xml.relsから画像・チャート参照を解決]
+        E7[段落・見出し・表・画像・図形・チャート候補を解析]
         E8[解析結果を内部変換データとして組み立てる]
-        E9[画像をresourcesフォルダへ出力]
+        E9[画像をresourceフォルダへ出力]
         E10[内部変換データからMarkdownを生成]
-        E11[入力Wordファイルと同一フォルダにMarkdownを出力]
+        E11[入力Wordファイル名フォルダにMarkdownを出力]
     end
 
     U1 --> U2
@@ -134,6 +140,8 @@ flowchart TD
 | `word/styles.xml` | 段落スタイル、見出しスタイル |
 | `word/numbering.xml` | 箇条書き、番号付きリスト |
 | `word/media/*` | 画像バイナリ |
+| `word/charts/chart*.xml` | Wordチャートの構造、系列、カテゴリ、値 |
+| `word/embeddings/*` | チャート元データの埋め込みブック。取得できる場合のみ利用する |
 | `word/header*.xml` | ヘッダー。初期対応では対象外または警告 |
 | `word/footer*.xml` | フッター。初期対応では対象外または警告 |
 
@@ -146,6 +154,7 @@ flowchart TD
 | `w:p` | paragraph | 見出しまたは本文 |
 | `w:tbl` | table | Markdown table |
 | `w:drawing` | image / shape候補 | Markdown画像、Mermaid候補、または警告 |
+| `c:chart` | chart | Mermaid候補、データ表、または警告 |
 
 ## 7. 内部変換データ設計
 
@@ -160,6 +169,7 @@ flowchart TD
 | `blocks` | 本文順に並ぶブロック配列 |
 | `images` | 文書内画像の一覧 |
 | `shapes` | Word図形やテキストボックスの候補一覧 |
+| `charts` | Wordチャートの一覧 |
 
 ### 7.2 document
 
@@ -176,8 +186,11 @@ flowchart TD
 | `index` | Word本文内の出現順 |
 | `style` | Word段落スタイル。例: `Title`, `Subtitle`, `Heading1`, `Normal` |
 | `text` | 段落テキスト |
+| `runs` | 段落内の文字列と文字装飾の配列 |
+| `paragraph_format` | 段落配置、インデントなど段落単位の装飾 |
 | `drawings` | 段落内の画像、図形候補 |
 | `rows` | 表ブロックの場合の行データ |
+| `chart` | チャートブロックの場合のチャート情報 |
 
 ### 7.4 images[]
 
@@ -200,7 +213,36 @@ flowchart TD
 | `labels` | Mermaid候補化に使うラベル配列 |
 | `mermaid_candidate` | Mermaid化できる場合の候補コード |
 
-### 7.6 内部変換データ例
+### 7.6 charts[]
+
+| 項目 | 内容 |
+|---|---|
+| `type` | `chart` |
+| `chart_type` | `bar`、`line`、`pie` など |
+| `title` | チャートタイトル。存在する場合のみ |
+| `categories` | 横軸または分類ラベル |
+| `series` | 系列名と値の配列 |
+| `mermaid_candidate` | Mermaid化できる場合の候補コード |
+| `data_table` | Mermaid化できない場合に出力する表データ |
+| `source` | zip内チャートXMLパス |
+
+### 7.7 文字装飾データ
+
+段落内の文字装飾は、本文テキストを失わないようにrun単位で保持する。
+Word側の装飾がスタイル継承で指定される場合は、`w:rPr` の直接指定を優先し、足りない値は `word/styles.xml` から補完する。
+
+| 項目 | 内容 |
+|---|---|
+| `text` | run内文字列 |
+| `bold` | 太字 |
+| `italic` | 斜体 |
+| `underline` | 下線 |
+| `color` | 文字色。RGB値が取得できる場合は `#RRGGBB` |
+| `font_size_pt` | 文字サイズpt。`w:sz` は半ポイント値のため2で割る |
+| `highlight` | ハイライト色 |
+| `font` | フォント名。取得できる場合のみ |
+
+### 7.8 内部変換データ例
 
 ```json
 {
@@ -214,11 +256,23 @@ flowchart TD
       "index": 0,
       "style": "Title",
       "text": "ペットの名前",
+      "paragraph_format": {
+        "align": "center"
+      },
+      "runs": [
+        {
+          "text": "ペットの名前",
+          "bold": true,
+          "color": "#1F4E79",
+          "font_size_pt": 18
+        }
+      ],
       "drawings": []
     }
   ],
   "images": [],
-  "shapes": []
+  "shapes": [],
+  "charts": []
 }
 ```
 
@@ -240,7 +294,36 @@ Word段落スタイルをMarkdown見出しへ変換する。
 `Normal` など通常段落は、そのままMarkdown本文として出力する。
 段落間には空行を入れる。
 
-### 8.3 箇条書き
+文字装飾、文字色、文字サイズ、配置は、AIが意味を読み取りやすい本文を保ちながら、人間が視認しやすい範囲でHTML混在Markdownへ変換する。
+
+### 8.3 テキストデザイン
+
+テキストデザインは中程度対応とし、Wordの完全な見た目ではなく、文意や強調の理解に効く情報を優先して残す。
+
+| Word要素 | Open XML | Markdown出力 | 備考 |
+|---|---|---|---|
+| 太字 | `w:rPr/w:b` | `**text**` | Markdown標準で表現する |
+| 斜体 | `w:rPr/w:i` | `*text*` | Markdown標準で表現する |
+| 下線 | `w:rPr/w:u` | `<u>text</u>` | Markdown標準にないためHTMLを使う |
+| 文字色 | `w:rPr/w:color` | `<span style="color:#RRGGBB">text</span>` | `auto` は出力しない |
+| 文字サイズ | `w:rPr/w:sz` | `<span style="font-size:12pt">text</span>` | `w:sz=24` は `12pt` |
+| 文字色 + 文字サイズ | `w:color` + `w:sz` | `<span style="color:#RRGGBB; font-size:12pt">text</span>` | style属性に統合する |
+| ハイライト | `w:rPr/w:highlight` | `<span style="background-color:yellow">text</span>` | 代表色のみ対応する |
+| 中央揃え | `w:pPr/w:jc val=center` | `<p style="text-align:center">text</p>` | 段落全体に適用する |
+| 右揃え | `w:pPr/w:jc val=right` | `<p style="text-align:right">text</p>` | 段落全体に適用する |
+| 均等割付 | `w:pPr/w:jc val=both` | `<p style="text-align:justify">text</p>` | 近似表現とする |
+| 左揃え | `w:pPr/w:jc val=left` | 通常Markdown本文 | デフォルトのためHTML化しない |
+
+複数装飾が同時に指定された場合は、外側をMarkdownの強調、内側をHTML `span` とする。
+ただし、HTML内でMarkdownが効かないビューアがあるため、色やサイズを使うrunは `<strong>`、`<em>` などHTMLタグへ寄せてもよい。
+
+例:
+
+```md
+<p style="text-align:center"><span style="color:#C00000; font-size:14pt">重要</span></p>
+```
+
+### 8.4 箇条書き
 
 Wordのnumbering情報を解析し、Markdown listへ変換する。
 
@@ -249,7 +332,7 @@ Wordのnumbering情報を解析し、Markdown listへ変換する。
 | 箇条書き | `- item` |
 | 番号付きリスト | `1. item` |
 
-### 8.4 表
+### 8.5 表
 
 Word表はMarkdown tableへ変換する。
 
@@ -261,24 +344,25 @@ Word表はMarkdown tableへ変換する。
 
 セル内改行は `<br>` として扱う。
 
-### 8.5 画像
+### 8.6 画像
 
-画像はbase64埋め込みではなく、`resources/` 配下へ外部ファイルとして出力する。
+画像はbase64埋め込みではなく、`<入力Wordファイル名>resource/` 配下へ外部ファイルとして出力する。
 Markdownから相対パスで参照する。
 
 ```md
-![pet_resume.jpg](resources/image2.jpg)
+![pet_resume.jpg](レポートresource/image2.jpg)
 ```
 
 画像が1x1などのプレースホルダーと判断できる場合は、Markdownへ出力しない。
 
-### 8.6 Word図形
+### 8.7 Word図形
 
 Word図形はMarkdownで完全再現しづらいため、次の順で扱う。
 
-1. 図形全体画像が取得できる場合はMarkdown画像として出力する。
-2. 単純なフロー図として判断できる場合はMermaid候補を出力する。
-3. どちらも難しい場合は図形内テキストを引用または警告として扱う。
+1. 単純なフロー図として判断できる場合はMermaid候補を出力する。
+2. 図形内テキストを構造化できる場合は引用または箇条書きとして出力する。
+3. 図形全体画像が取得できる場合はMarkdown画像として出力する。
+4. どれも難しい場合は警告として扱う。
 
 Mermaid候補:
 
@@ -287,7 +371,46 @@ flowchart LR
   A[オブジェクトA] --> B[オブジェクトB]
 ```
 
-### 8.7 HTML tableレイアウト
+### 8.8 チャート
+
+チャートはAIが内容を理解しやすい形を優先し、画像より先に構造化変換を試みる。
+
+| 優先度 | 出力形式 | 条件 | 出力例 |
+|---:|---|---|---|
+| 1 | Mermaid | チャート種類、カテゴリ、系列、値を取得でき、Mermaidで意味を表現できる | `xychart-beta`、`pie` |
+| 2 | データ表 | Mermaid化できないが、カテゴリ、系列、値を取得できる | Markdown table |
+| 3 | 説明テキスト | 一部メタ情報のみ取得できる | `> チャート: ...` |
+| 4 | 警告 | 内容を取得できない | Markdown本文には出力しない |
+
+棒グラフ、折れ線グラフなどは `xychart-beta` への変換を試みる。
+
+```mermaid
+xychart-beta
+  title "Example Charts"
+  x-axis ["A", "B", "C"]
+  y-axis "value" 0 --> 100
+  bar [10, 40, 80]
+```
+
+円グラフは `pie` への変換を試みる。
+
+```mermaid
+pie title Example Charts
+  "A" : 10
+  "B" : 40
+  "C" : 80
+```
+
+Mermaid化できない場合は、AIが読み取りやすいようにチャート名、系列、カテゴリ、値を表として出力する。
+
+```md
+| chart | series | category | value |
+|---|---|---|---:|
+| Example Charts | 売上 | A | 10 |
+| Example Charts | 売上 | B | 40 |
+```
+
+### 8.9 HTML tableレイアウト
 
 画像横に説明文があるようなWordレイアウトでも、Markdown本文ではHTML tableによる左右レイアウトは基本採用しない。
 Markdownの可読性を優先し、通常の画像参照と本文段落として出力する。
@@ -298,12 +421,14 @@ Markdownの可読性を優先し、通常の画像参照と本文段落として
 |---|---|---|
 | 文書情報 | `document` | 出力ファイル名、処理ログ |
 | 見出し | `blocks[type=paragraph].style` | `#`, `##`, `###` |
-| 段落 | `blocks[type=paragraph].text` | 本文 |
+| 段落 | `blocks[type=paragraph].text` | 本文、必要に応じて `<p style="text-align:...">` |
+| 文字装飾 | `blocks[type=paragraph].runs[]` | Markdown強調、`span`、`u` |
 | 改行 | 段落内テキスト | Markdown改行または段落区切り |
 | 箇条書き | numbering情報 | Markdown list |
 | 表 | `blocks[type=table].rows` | Markdown table |
 | 画像 | `images[].path` | Markdown画像参照 |
 | Word図形 | `shapes[]` | 画像、Mermaid候補、または警告 |
+| チャート | `charts[]` | Mermaid、データ表、説明テキスト、または警告 |
 
 ## 10. エラー・例外処理
 
@@ -331,9 +456,11 @@ Markdownの可読性を優先し、通常の画像参照と本文段落として
 | `.docx` として必要なdocument構造がない | エラー終了 |
 | `styles.xml` がない | デフォルトスタイルとして扱う |
 | `numbering.xml` がない | リストなしとして扱う |
+| 文字装飾が解決できない | 本文テキストを優先し、装飾なしで出力する |
 | 表の列数が行ごとに異なる | 最大列数に合わせて空セル補完する |
 | 画像が1x1プレースホルダー | Markdownへ出力しない |
 | Mermaid化できない図形 | 図形内テキストを出力するか、警告として扱う |
+| Mermaid化できないチャート | チャートデータ表を出力する。データも取得できない場合は警告として扱う |
 
 ## 11. 制約
 
@@ -341,4 +468,6 @@ Markdownの可読性を優先し、通常の画像参照と本文段落として
 - Markdownはページレイアウト、重なり順、座標表現に向かない。
 - 複雑な図形、SmartArt、テキストボックスの完全再現はしない。
 - 画像はMarkdown外部ファイルとして管理するため、Markdown単体では画像を内包しない。
-- Mermaid化は単純なフロー図候補に限定する。
+- 図形のMermaid化は単純なフロー図候補に限定する。
+- テキストデザインは色、サイズ、配置などの中程度対応に留める。
+- チャートのMermaid化は、Mermaidで表現できるチャート種別とデータ構造に限定する。

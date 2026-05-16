@@ -275,7 +275,7 @@ function f02TestCases(): TestCase[] {
     },
     {
       id: "UT-F02-012",
-      label: "複数画像をresourcesへ出力し、Markdownから相対参照する",
+      label: "複数画像をファイル名resourceへ出力し、Markdownから相対参照する",
       fixture: "UT-F02-012.docx",
       feature: "F02",
       run: ({ markdown, resources }) => {
