@@ -20,21 +20,21 @@ The extension currently converts Excel and Word files into editable text-based f
 
    - `Convert Excel to Draw.io`
 
-     ![Convert Excel to Draw.io context menu](image/README/1778455217913.png)
+     ![Convert Excel to Draw.io context menu](https://raw.githubusercontent.com/comecomenakau/officeNIKI/30.developAndTest/office-to-mdrow/image/README/1778455217913.png)
 
    - `Convert Word to Markdown`
 
-     ![Convert Word to Markdown context menu](image/README/1778455291868.png)
+     ![Convert Word to Markdown context menu](https://raw.githubusercontent.com/comecomenakau/officeNIKI/30.developAndTest/office-to-mdrow/image/README/1778455291868.png)
 
 4. The converted file is created in the same folder as the source file.
 
    Excel to Draw.io result:
 
-   ![Excel to Draw.io conversion result](image/README/1778455462127.png)
+   ![Excel to Draw.io conversion result](https://raw.githubusercontent.com/comecomenakau/officeNIKI/30.developAndTest/office-to-mdrow/image/README/1778455462127.png)
 
    Word to Markdown result:
 
-   ![Word to Markdown conversion result](image/README/1778455542849.png)
+   ![Word to Markdown conversion result](https://raw.githubusercontent.com/comecomenakau/officeNIKI/30.developAndTest/office-to-mdrow/image/README/1778455542849.png)
 
 ## Conversion Details
 

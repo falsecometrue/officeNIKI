@@ -2,12 +2,12 @@
   "name": "office-to-mdraw",
   "displayName": "office to mdraw",
   "description": "Convert Office files from the VS Code explorer context menu.",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "publisher": "SAKIYAMA-KANAU",
   "icon": "image/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/falsecometrue/officeNIKI.git",
+    "url": "https://github.com/comecomenakau/officeNIKI.git",
     "directory": "office-to-mdrow"
   },
   "engines": {

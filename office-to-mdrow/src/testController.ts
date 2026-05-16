@@ -152,7 +152,8 @@ async function convertDocxFixture(testDataDir: string, fixtureName: string): Pro
   const sourcePath = copyTestFile(testDataDir, fixtureName);
   const outputPath = await convertDocxToMarkdown(sourcePath);
   const markdown = fs.readFileSync(outputPath, "utf8");
-  const resourceDir = path.join(path.dirname(sourcePath), "resources");
+  const docxName = path.parse(sourcePath).name;
+  const resourceDir = path.join(path.dirname(sourcePath), docxName, `${docxName}resource`);
   const resources = fs.existsSync(resourceDir)
     ? fs.readdirSync(resourceDir).filter((entry) => fs.statSync(path.join(resourceDir, entry)).isFile())
     : [];
@@ -243,6 +244,7 @@ function f02TestCases(): TestCase[] {
       feature: "F02",
       run: ({ outputPath, markdown }) => {
         assertEqual(path.extname(outputPath), ".md", "拡張子が.mdであること");
+        assertEqual(path.basename(path.dirname(outputPath)), "UT-F02-001", "Wordファイル名のフォルダ配下に出力されること");
         assertEqual(fs.existsSync(outputPath), true, "Markdownが出力されること");
         assertOk(markdown.length > 0, "Markdown本文が空でないこと");
         assertOk(markdown.includes("新見積管理システム"), "本文テキストが含まれること");
@@ -277,8 +279,8 @@ function f02TestCases(): TestCase[] {
       fixture: "UT-F02-012.docx",
       feature: "F02",
       run: ({ markdown, resources }) => {
-        const imageLinks = markdown.match(/!\[[^\]]*]\(resources\/[^)]+\)/g) || [];
-        assertEqual(resources.length, 3, "resources配下の画像数が3件であること");
+        const imageLinks = markdown.match(/!\[[^\]]*]\(UT-F02-012resource\/[^)]+\)/g) || [];
+        assertEqual(resources.length, 3, "ファイル名resource配下の画像数が3件であること");
         assertOk(imageLinks.length >= 3, `Markdown画像リンク数が3件以上であること。実際: ${imageLinks.length}`);
         assertOk(!markdown.includes("data:image/"), "data URI画像を含まないこと");
       }

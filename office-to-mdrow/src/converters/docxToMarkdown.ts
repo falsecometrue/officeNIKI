@@ -22,8 +22,10 @@ type Drawing = Record<string, any>;
 type Block = Record<string, any>;
 
 export async function convertDocxToMarkdown(sourcePath: string): Promise<string> {
-  const outputDir = path.dirname(sourcePath);
-  const markdownPath = path.join(outputDir, `${path.parse(sourcePath).name}.md`);
+  const sourceName = path.parse(sourcePath).name;
+  const outputDir = path.join(path.dirname(sourcePath), sourceName);
+  fs.mkdirSync(outputDir, { recursive: true });
+  const markdownPath = path.join(outputDir, `${sourceName}.md`);
   const intermediate = parseDocx(sourcePath, outputDir);
   fs.writeFileSync(markdownPath, buildMarkdown(intermediate), "utf8");
   return markdownPath;
@@ -197,7 +199,7 @@ function parseTable(table: XmlNode): Block {
 }
 
 function parseDocx(sourceDocx: string, outputDir: string): Record<string, any> {
-  const resourceDir = path.join(outputDir, "resources");
+  const resourceDir = path.join(outputDir, `${path.parse(sourceDocx).name}resource`);
   fs.rmSync(resourceDir, { recursive: true, force: true });
   fs.mkdirSync(resourceDir, { recursive: true });
 
