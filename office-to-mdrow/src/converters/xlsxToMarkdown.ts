@@ -21,15 +21,9 @@ type MergeRange = {
   colspan: number;
 };
 
-const DEFAULT_COL_WIDTH = 12.63;
-const DEFAULT_ROW_HEIGHT_PT = 15.75;
-const SHEET_ORIGIN_X = 40;
-const SHEET_ORIGIN_Y = 40;
-
 type RenderedImage = {
-  key: string;
-  row: number;
-  col: number;
+  x: number;
+  y: number;
   html: string;
 };
 
@@ -38,6 +32,24 @@ type TableBounds = {
   maxRow: number;
   minCol: number;
   maxCol: number;
+};
+
+type TableBlock = {
+  bounds: TableBounds;
+  cells: Dict[];
+  merges: MergeRange[];
+};
+
+type MarkdownBlock = {
+  x: number;
+  y: number;
+  markdown: string;
+};
+
+type MermaidBlock = {
+  x: number;
+  y: number;
+  code: string;
 };
 
 export async function convertXlsxToMarkdown(sourcePath: string): Promise<string> {
@@ -101,141 +113,151 @@ function sheetFileNames(sheets: Dict[]): string[] {
 }
 
 function buildSheetMarkdown(sheet: Dict, sheetFileName: string, ctx: ResourceContext): string {
-  const lines: string[] = [];
+  const blocks: MarkdownBlock[] = [];
   const imageLinks = copySheetImages(sheet, sheetFileName, ctx);
-  const tableBounds = tableBoundsForSheet(sheet);
-  const tableImages = tableBounds ? imageLinks.filter((image) => image.key && isInsideTableBounds(image, tableBounds)) : [];
-  const table = buildHtmlTable(sheet, tableImages, tableBounds);
-  if (table) {
-    lines.push(table);
+
+  const tables = tableBlocksForSheet(sheet);
+  tables.forEach((table, index) => {
+    blocks.push({
+      x: table.bounds.minCol * 100,
+      y: table.bounds.minRow * 24,
+      markdown: [`## Table ${index + 1}`, "", buildHtmlTable(table, styleMap(sheet))].join("\n")
+    });
+  });
+
+  const sequenceDiagram = mermaidSequenceDiagram(sheet);
+  if (sequenceDiagram) {
+    blocks.push({
+      x: sequenceDiagram.x,
+      y: sequenceDiagram.y,
+      markdown: ["## Diagram 1", "", "```mermaid", sequenceDiagram.code, "```"].join("\n")
+    });
   }
 
-  const shapeTexts = (sheet.drawings || [])
-    .filter((drawing: Dict) => drawing.kind === "vertex" && String(drawing.text || "").trim())
-    .sort((left: Dict, right: Dict) => Number(left.y || 0) - Number(right.y || 0) || Number(left.x || 0) - Number(right.x || 0))
-    .map((drawing: Dict) => renderShapeText(drawing));
-  if (shapeTexts.length) {
-    if (lines.length) {
-      lines.push("");
-    }
-    lines.push(...shapeTexts);
-  }
+  imageLinks.forEach((image, index) => {
+    blocks.push({
+      x: image.x,
+      y: image.y,
+      markdown: [`## Image ${index + 1}`, "", image.html].join("\n")
+    });
+  });
 
-  const tableImageSet = new Set(tableImages);
-  const standaloneImages = imageLinks.filter((image) => !tableImageSet.has(image));
-  if (standaloneImages.length) {
-    if (lines.length) {
-      lines.push("");
-    }
-    lines.push(...standaloneImages.map((image) => image.html));
-  }
-
-  return `${lines.join("\n")}\n`;
+  blocks.sort((left, right) => left.y - right.y || left.x - right.x);
+  return `${blocks.map((block) => block.markdown).join("\n\n")}\n`;
 }
 
-function buildHtmlTable(sheet: Dict, images: RenderedImage[], bounds: TableBounds | undefined): string {
-  const cells: Dict[] = sheet.cells || [];
-  if (!bounds || !cells.length) {
-    return "";
-  }
-  const styles = styleMap(sheet);
-  const visibleCells = cells.filter((cell) => isVisibleCell(cell, styles));
-  if (!visibleCells.length) {
-    return "";
-  }
-  const colWidths = colWidthMap(sheet);
-  const rowHeights = rowHeightMap(sheet);
-  const visiblePositions = new Set(visibleCells.map((cell) => `${cell.row},${cell.col}`));
-  const merges = mergeRanges(sheet).filter((merge) => visiblePositions.has(`${merge.startRow},${merge.startCol}`));
-  const covered = mergedCoveredPositions(merges);
-  const byMergeStart = new Map(merges.map((merge) => [`${merge.startRow},${merge.startCol}`, merge]));
-  const byPosition = new Map(cells.map((cell) => [`${cell.row},${cell.col}`, cell]));
-  const imagesByCell = imagesByTableCell(images, merges);
+function buildHtmlTable(table: TableBlock, styles: Record<number, Dict>): string {
+  const byPosition = new Map(table.cells.map((cell) => [`${cell.row},${cell.col}`, cell]));
+  const covered = mergedCoveredPositions(table.merges);
+  const byMergeStart = new Map(table.merges.map((merge) => [`${merge.startRow},${merge.startCol}`, merge]));
 
-  const lines = ['<table style="border-collapse:collapse;table-layout:fixed;">'];
-  lines.push("<colgroup>");
-  for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
-    lines.push(`<col style="width:${colWidths[col] || excelColWidthToPx(DEFAULT_COL_WIDTH)}px">`);
-  }
-  lines.push("</colgroup>");
-  for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
-    lines.push(`<tr style="height:${rowHeights[row] || excelRowHeightToPx(DEFAULT_ROW_HEIGHT_PT)}px">`);
-    for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
+  const lines = ['<table>'];
+  for (let row = table.bounds.minRow; row <= table.bounds.maxRow; row += 1) {
+    lines.push("  <tr>");
+    for (let col = table.bounds.minCol; col <= table.bounds.maxCol; col += 1) {
       const key = `${row},${col}`;
       if (covered.has(key)) {
         continue;
       }
       const cell = byPosition.get(key);
+      const attrs = cell ? [`style="${htmlAttr(cellStyle(cell, styles))}"`].filter((attr) => attr !== 'style=""') : [];
       const merge = byMergeStart.get(key);
-      const attrs = [
-        merge?.rowspan && merge.rowspan > 1 ? `rowspan="${merge.rowspan}"` : "",
-        merge?.colspan && merge.colspan > 1 ? `colspan="${merge.colspan}"` : "",
-        `style="${htmlAttr(cellStyle(cell, styles))}"`
-      ].filter(Boolean);
-      const contents = [renderCellValue(cell, styles), ...(imagesByCell.get(key) || []).map((image) => image.html)].filter(Boolean);
-      lines.push(`<td ${attrs.join(" ")}>${contents.join("<br>")}</td>`);
+      if (merge?.rowspan && merge.rowspan > 1) {
+        attrs.unshift(`rowspan="${merge.rowspan}"`);
+      }
+      if (merge?.colspan && merge.colspan > 1) {
+        attrs.unshift(`colspan="${merge.colspan}"`);
+      }
+      const attrsText = attrs.length ? ` ${attrs.join(" ")}` : "";
+      lines.push(`    <td${attrsText}>${renderCellValue(cell, styles)}</td>`);
     }
-    lines.push("</tr>");
+    lines.push("  </tr>");
   }
   lines.push("</table>");
   return lines.join("\n");
 }
 
-function tableBoundsForSheet(sheet: Dict): TableBounds | undefined {
+function tableBlocksForSheet(sheet: Dict): TableBlock[] {
   const cells: Dict[] = sheet.cells || [];
   const styles = styleMap(sheet);
-  const visibleCells = cells.filter((cell) => isVisibleCell(cell, styles));
-  if (!visibleCells.length) {
-    return undefined;
-  }
-  const visiblePositions = new Set(visibleCells.map((cell) => `${cell.row},${cell.col}`));
-  const merges = mergeRanges(sheet).filter((merge) => visiblePositions.has(`${merge.startRow},${merge.startCol}`));
-  return {
-    minRow: Math.min(...visibleCells.map((cell) => Number(cell.row)), ...merges.map((merge) => merge.startRow)),
-    maxRow: Math.max(...visibleCells.map((cell) => Number(cell.row)), ...merges.map((merge) => merge.endRow)),
-    minCol: Math.min(...visibleCells.map((cell) => Number(cell.col)), ...merges.map((merge) => merge.startCol)),
-    maxCol: Math.max(...visibleCells.map((cell) => Number(cell.col)), ...merges.map((merge) => merge.endCol))
-  };
-}
+  const meaningfulCells = cells.filter((cell) => isMeaningfulCell(cell, styles));
+  const meaningfulByPosition = new Map(meaningfulCells.map((cell) => [`${cell.row},${cell.col}`, cell]));
+  const merges = mergeRanges(sheet);
+  const visited = new Set<string>();
+  const blocks: TableBlock[] = [];
 
-function isInsideTableBounds(image: RenderedImage, bounds: TableBounds): boolean {
-  return (
-    image.row >= bounds.minRow &&
-    image.row <= bounds.maxRow &&
-    image.col >= bounds.minCol &&
-    image.col <= bounds.maxCol
-  );
-}
-
-function imagesByTableCell(images: RenderedImage[], merges: MergeRange[]): Map<string, RenderedImage[]> {
-  const byCell = new Map<string, RenderedImage[]>();
-  for (const image of images) {
-    if (!image.key) {
+  for (const cell of meaningfulCells) {
+    const startKey = `${cell.row},${cell.col}`;
+    if (visited.has(startKey)) {
       continue;
     }
-    const key = mergeStartKeyForCell(image.row, image.col, merges) || image.key;
-    const list = byCell.get(key) || [];
-    list.push(image);
-    byCell.set(key, list);
+    const stack = [startKey];
+    const component: Dict[] = [];
+    visited.add(startKey);
+
+    while (stack.length) {
+      const current = stack.pop()!;
+      const currentCell = meaningfulByPosition.get(current);
+      if (!currentCell) {
+        continue;
+      }
+      component.push(currentCell);
+      const [row, col] = current.split(",").map(Number);
+      for (const [nextRow, nextCol] of [[row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]]) {
+        const nextKey = `${nextRow},${nextCol}`;
+        if (meaningfulByPosition.has(nextKey) && !visited.has(nextKey)) {
+          visited.add(nextKey);
+          stack.push(nextKey);
+        }
+      }
+    }
+
+    const block = tableBlockFromComponent(component, cells, merges);
+    if (block) {
+      blocks.push(block);
+    }
   }
-  return byCell;
+
+  return blocks.sort((left, right) => left.bounds.minRow - right.bounds.minRow || left.bounds.minCol - right.bounds.minCol);
 }
 
-function mergeStartKeyForCell(row: number, col: number, merges: MergeRange[]): string | undefined {
-  const merge = merges.find((candidate) => (
-    row >= candidate.startRow &&
-    row <= candidate.endRow &&
-    col >= candidate.startCol &&
-    col <= candidate.endCol
+function tableBlockFromComponent(component: Dict[], allCells: Dict[], merges: MergeRange[]): TableBlock | undefined {
+  const valuedCells = component.filter((cell) => cellText(cell).trim());
+  if (!valuedCells.length) {
+    return undefined;
+  }
+  const bounds: TableBounds = {
+    minRow: Math.min(...valuedCells.map((cell) => Number(cell.row))),
+    maxRow: Math.max(...valuedCells.map((cell) => Number(cell.row))),
+    minCol: Math.min(...valuedCells.map((cell) => Number(cell.col))),
+    maxCol: Math.max(...valuedCells.map((cell) => Number(cell.col)))
+  };
+  const blockMerges = merges.filter((merge) => (
+    merge.startRow >= bounds.minRow &&
+    merge.startRow <= bounds.maxRow &&
+    merge.startCol >= bounds.minCol &&
+    merge.startCol <= bounds.maxCol
   ));
-  return merge ? `${merge.startRow},${merge.startCol}` : undefined;
+  for (const merge of blockMerges) {
+    bounds.minRow = Math.min(bounds.minRow, merge.startRow);
+    bounds.maxRow = Math.max(bounds.maxRow, merge.endRow);
+    bounds.minCol = Math.min(bounds.minCol, merge.startCol);
+    bounds.maxCol = Math.max(bounds.maxCol, merge.endCol);
+  }
+  const byPosition = new Map(allCells.map((cell) => [`${cell.row},${cell.col}`, cell]));
+  const cells: Dict[] = [];
+  for (let row = bounds.minRow; row <= bounds.maxRow; row += 1) {
+    for (let col = bounds.minCol; col <= bounds.maxCol; col += 1) {
+      const cell = byPosition.get(`${row},${col}`);
+      if (cell) {
+        cells.push(cell);
+      }
+    }
+  }
+  return { bounds, cells, merges: blockMerges };
 }
 
-function styleMap(sheet: Dict): Record<number, Dict> {
-  return Object.fromEntries((sheet.styles || []).map((style: Dict) => [Number(style.style_id), style]));
-}
-
-function isVisibleCell(cell: Dict, styles: Record<number, Dict>): boolean {
+function isMeaningfulCell(cell: Dict, styles: Record<number, Dict>): boolean {
   if (cellText(cell).trim()) {
     return true;
   }
@@ -243,30 +265,8 @@ function isVisibleCell(cell: Dict, styles: Record<number, Dict>): boolean {
   return Boolean(style.fill_color || style.border_color || style.apply_border);
 }
 
-function excelColWidthToPx(width: number): number {
-  return Math.round(width * 7 + 5);
-}
-
-function excelRowHeightToPx(heightPt: number): number {
-  return Math.round((heightPt * 96) / 72);
-}
-
-function colWidthMap(sheet: Dict): Record<number, number> {
-  const widths: Record<number, number> = {};
-  for (const col of sheet.cols || []) {
-    for (let index = Number(col.min); index <= Number(col.max); index += 1) {
-      widths[index] = excelColWidthToPx(Number(col.width || DEFAULT_COL_WIDTH));
-    }
-  }
-  return widths;
-}
-
-function rowHeightMap(sheet: Dict): Record<number, number> {
-  const heights: Record<number, number> = {};
-  for (const row of sheet.rows || []) {
-    heights[Number(row.index)] = excelRowHeightToPx(Number(row.height || DEFAULT_ROW_HEIGHT_PT));
-  }
-  return heights;
+function styleMap(sheet: Dict): Record<number, Dict> {
+  return Object.fromEntries((sheet.styles || []).map((style: Dict) => [Number(style.style_id), style]));
 }
 
 function colNameToIndex(colName: string): number {
@@ -325,15 +325,13 @@ function cellStyle(cell: Dict | undefined, styles: Record<number, Dict>): string
   const style = cell ? styles[Number(cell.style_id || 0)] || {} : {};
   const font = style.font || {};
   const declarations: Record<string, string | undefined> = {
-    border: `1px solid ${style.border_color || "#D9D9D9"}`,
+    border: style.apply_border || style.border_color ? `1px solid ${style.border_color || "#D9D9D9"}` : undefined,
     background: style.fill_color || undefined,
-    "text-align": cssHorizontalAlign(String(style.horizontal_alignment || "")),
-    "vertical-align": cssVerticalAlign(String(style.vertical_alignment || "")),
-    "font-family": font.name ? `${font.name}, sans-serif` : undefined,
-    "font-size": font.size_pt ? `${font.size_pt}pt` : undefined,
+    "text-align": style.horizontal_alignment ? cssHorizontalAlign(String(style.horizontal_alignment || "")) : undefined,
+    "vertical-align": style.vertical_alignment ? cssVerticalAlign(String(style.vertical_alignment || "")) : undefined,
+    "font-weight": font.bold ? "700" : undefined,
     color: font.color,
-    padding: "2px 4px",
-    "white-space": style.wrap_text ? "pre-wrap" : "normal"
+    "white-space": style.wrap_text ? "pre-wrap" : undefined
   };
   return styleAttr(declarations);
 }
@@ -389,8 +387,6 @@ function renderCellValue(cell: Dict | undefined, styles: Record<number, Dict>): 
 
 function copySheetImages(sheet: Dict, sheetFileName: string, ctx: ResourceContext): RenderedImage[] {
   const images = (sheet.drawings || []).filter((drawing: Dict) => drawing.kind === "image" && drawing.path);
-  const colWidths = colWidthMap(sheet);
-  const rowHeights = rowHeightMap(sheet);
   return images.map((image: Dict, index: number) => {
     const sourcePath = String(image.path);
     const ext = imageExtension(sourcePath);
@@ -400,87 +396,54 @@ function copySheetImages(sheet: Dict, sheetFileName: string, ctx: ResourceContex
     const relPath = path.relative(ctx.linkBaseDir, destination).split(path.sep).join("/");
     const alt = htmlAttr(String(image.name || path.parse(fileName).name));
     const width = Number(image.width || 0);
-    const height = Number(image.height || 0);
-    const position = sheetCellAtPoint(Number(image.x || 0), Number(image.y || 0), colWidths, rowHeights);
-    const key = position ? `${position.row},${position.col}` : "";
-    const style = imageCellStyle(image, position, colWidths, rowHeights);
-    const styleAttrText = style ? ` style="${htmlAttr(style)}"` : "";
-    const html = width > 0 && height > 0
-      ? `<img src="${htmlAttr(relPath)}" alt="${alt}" width="${Math.round(width)}" height="${Math.round(height)}"${styleAttrText}>`
-      : `<img src="${htmlAttr(relPath)}" alt="${alt}"${styleAttrText}>`;
+    const displayWidth = width > 0 ? Math.min(Math.max(Math.round(width), 320), 640) : 640;
+    const html = `<img src="${htmlAttr(relPath)}" alt="${alt}" width="${displayWidth}">`;
     return {
-      key,
-      row: position?.row || 0,
-      col: position?.col || 0,
+      x: Number(image.x || 0),
+      y: Number(image.y || 0),
       html
     };
   });
 }
 
-function sheetCellAtPoint(x: number, y: number, colWidths: Record<number, number>, rowHeights: Record<number, number>): { row: number; col: number } | undefined {
-  if (!Number.isFinite(x) || !Number.isFinite(y) || x < SHEET_ORIGIN_X || y < SHEET_ORIGIN_Y) {
+function mermaidSequenceDiagram(sheet: Dict): MermaidBlock | undefined {
+  const vertices = (sheet.drawings || [])
+    .filter((drawing: Dict) => drawing.kind === "vertex" && String(drawing.text || "").trim())
+    .sort((left: Dict, right: Dict) => Number(left.x || 0) - Number(right.x || 0));
+  const edges = (sheet.drawings || [])
+    .filter((drawing: Dict) => drawing.kind === "edge" && drawing.sourceId && drawing.targetId)
+    .sort((left: Dict, right: Dict) => Number(left.y || 0) - Number(right.y || 0));
+  if (vertices.length < 2 || !edges.length) {
     return undefined;
   }
-  return {
-    col: axisIndexAtPoint(x - SHEET_ORIGIN_X, colWidths, DEFAULT_COL_WIDTH, excelColWidthToPx),
-    row: axisIndexAtPoint(y - SHEET_ORIGIN_Y, rowHeights, DEFAULT_ROW_HEIGHT_PT, excelRowHeightToPx)
-  };
-}
 
-function axisIndexAtPoint(offset: number, sizes: Record<number, number>, defaultSize: number, converter: (value: number) => number): number {
-  const defaultPx = converter(defaultSize);
-  let cursor = 0;
-  for (let index = 1; index < 16384; index += 1) {
-    const size = sizes[index] || defaultPx;
-    if (offset < cursor + size) {
-      return index;
-    }
-    cursor += size;
-  }
-  return 16384;
-}
-
-function imageCellStyle(image: Dict, position: { row: number; col: number } | undefined, colWidths: Record<number, number>, rowHeights: Record<number, number>): string {
-  const declarations: Record<string, string | undefined> = {
-    display: "block",
-    "max-width": "100%",
-    height: "auto"
-  };
-  if (position) {
-    const left = Math.max(0, Math.round(Number(image.x || 0) - sheetXForCol(position.col, colWidths)));
-    const top = Math.max(0, Math.round(Number(image.y || 0) - sheetYForRow(position.row, rowHeights)));
-    if (left || top) {
-      declarations.margin = `${top}px 0 0 ${left}px`;
-    }
-  }
-  return styleAttr(declarations);
-}
-
-function sheetXForCol(col: number, colWidths: Record<number, number>): number {
-  const defaultPx = excelColWidthToPx(DEFAULT_COL_WIDTH);
-  let x = SHEET_ORIGIN_X;
-  for (let index = 1; index < col; index += 1) {
-    x += colWidths[index] || defaultPx;
-  }
-  return x;
-}
-
-function sheetYForRow(row: number, rowHeights: Record<number, number>): number {
-  const defaultPx = excelRowHeightToPx(DEFAULT_ROW_HEIGHT_PT);
-  let y = SHEET_ORIGIN_Y;
-  for (let index = 1; index < row; index += 1) {
-    y += rowHeights[index] || defaultPx;
-  }
-  return y;
-}
-
-function renderShapeText(drawing: Dict): string {
-  const styles = styleAttr({
-    "background-color": drawing.fill,
-    color: drawing.stroke
+  const diagramItems = [...vertices, ...edges];
+  const x = Math.min(...diagramItems.map((drawing: Dict) => Number(drawing.x || 0)));
+  const y = Math.min(...diagramItems.map((drawing: Dict) => Number(drawing.y || 0)));
+  const aliases = new Map<string, string>();
+  const lines = ["sequenceDiagram"];
+  vertices.forEach((vertex: Dict, index: number) => {
+    const alias = `P${index + 1}`;
+    aliases.set(String(vertex.id), alias);
+    lines.push(`  participant ${alias} as ${mermaidText(String(vertex.text || vertex.name || alias))}`);
   });
-  const text = htmlEscape(String(drawing.text || "").trim()).replace(/\r?\n/g, "<br>");
-  return styles ? `<p style="${styles}">${text}</p>` : text;
+
+  let messageCount = 0;
+  for (const edge of edges) {
+    const source = aliases.get(String(edge.sourceId));
+    const target = aliases.get(String(edge.targetId));
+    if (!source || !target || source === target) {
+      continue;
+    }
+    const message = mermaidText(String(edge.text || edge.name || "message"));
+    lines.push(`  ${source}->>${target}: ${message}`);
+    messageCount += 1;
+  }
+  return messageCount ? { x, y, code: lines.join("\n") } : undefined;
+}
+
+function mermaidText(value: string): string {
+  return value.replace(/\r?\n/g, " ").replace(/:/g, "：").trim() || "message";
 }
 
 function imageExtension(sourcePath: string): string {

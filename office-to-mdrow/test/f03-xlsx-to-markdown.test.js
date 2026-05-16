@@ -50,7 +50,9 @@ test("UT-F03-002: Markdownから画像リソースを相対参照する", async 
   assert.match(indexMarkdown, /- \[画像あり\]\(sheets\/02_%E7%94%BB%E5%83%8F%E3%81%82%E3%82%8A\.md\)/);
   assert.match(objectMarkdown, /^# オブジェクト$/m);
   assert.match(imageMarkdown, /^# 画像あり$/m);
-  assert.match(imageMarkdown, /<table style="border-collapse:collapse;table-layout:fixed;">/);
-  assert.match(imageMarkdown, /<td style="[^"]*text-align:[^"]*">/);
-  assert.match(imageMarkdown, /<img src="\.\.\/resources\/02_画像あり-1\.png" alt="[^"]*" width="\d+" height="\d+"(?: style="[^"]*")?>/);
+  assert.match(imageMarkdown, /^## Table 1$/m);
+  assert.match(imageMarkdown, /<table>\n  <tr>\n    <td>画像ゾーン<\/td>/);
+  assert.doesNotMatch(imageMarkdown, /<colgroup>/);
+  assert.match(imageMarkdown, /^## Image 1$/m);
+  assert.match(imageMarkdown, /<img src="\.\.\/resources\/02_画像あり-1\.png" alt="[^"]*" width="\d+">/);
 });
