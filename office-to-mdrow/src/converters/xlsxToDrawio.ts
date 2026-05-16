@@ -22,6 +22,8 @@ const DEFAULT_COL_WIDTH = 12.63;
 const DEFAULT_ROW_HEIGHT_PT = 15.75;
 const SHEET_ORIGIN_X = 40;
 const SHEET_ORIGIN_Y = 40;
+const HUGE_TABLE_CELL_COUNT = 5000;
+const SPARSE_TABLE_VALUE_RATIO = 0.05;
 
 export type XlsxDict = Record<string, any>;
 type Dict = XlsxDict;
@@ -120,6 +122,19 @@ function parseStyles(zip: AdmZip): Dict[] {
     return [];
   }
   const root = readXml(zip, "xl/styles.xml").styleSheet;
+  const fonts = asArray<any>(root?.fonts?.font).map((font) => {
+    const color = first<any>(font, "color") || font?.color;
+    const size = first<any>(font, "sz") || font?.sz;
+    const name = first<any>(font, "name") || font?.name;
+    return {
+      bold: first<any>(font, "b") !== undefined,
+      italic: first<any>(font, "i") !== undefined,
+      underline: first<any>(font, "u") !== undefined,
+      color: normalizeRgb(color?.rgb),
+      size_pt: size?.val !== undefined ? Number(size.val) : undefined,
+      name: name?.val ? String(name.val) : undefined
+    };
+  });
   const fills = asArray<any>(root?.fills?.fill).map((fill) => ({
     color: normalizeRgb(first<any>(fill.patternFill, "fgColor")?.rgb || fill.patternFill?.fgColor?.rgb)
   }));
@@ -134,16 +149,22 @@ function parseStyles(zip: AdmZip): Dict[] {
   return asArray<any>(root?.cellXfs?.xf).map((xf, index) => {
     const fillId = Number(xf.fillId || 0);
     const borderId = Number(xf.borderId || 0);
+    const fontId = Number(xf.fontId || 0);
+    const alignment = first<any>(xf, "alignment") || xf.alignment || {};
     return {
       style_id: index,
-      font_id: Number(xf.fontId || 0),
+      font_id: fontId,
+      font: fonts[fontId] || {},
       fill_id: fillId,
       fill_color: fills[fillId]?.color,
       border_id: borderId,
       border_color: borders[borderId]?.color,
       num_fmt_id: Number(xf.numFmtId || 0),
       apply_border: String(xf.applyBorder || "") === "1",
-      apply_alignment: String(xf.applyAlignment || "") === "1"
+      apply_alignment: String(xf.applyAlignment || "") === "1",
+      horizontal_alignment: alignment.horizontal ? String(alignment.horizontal) : undefined,
+      vertical_alignment: alignment.vertical ? String(alignment.vertical) : undefined,
+      wrap_text: String(alignment.wrapText || "") === "1"
     };
   });
 }
@@ -537,6 +558,22 @@ function isTableCell(cell: Dict, styles: Record<number, Dict>): boolean {
   return Boolean(style.apply_border || style.fill_color);
 }
 
+function cellText(cell: Dict): string {
+  return String(cell.value ?? cell.raw_value ?? "");
+}
+
+function isEmptyCell(cell: Dict): boolean {
+  return cellText(cell).trim() === "";
+}
+
+function isSparseHugeComponent(component: Dict[]): boolean {
+  if (component.length <= HUGE_TABLE_CELL_COUNT) {
+    return false;
+  }
+  const valuedCount = component.filter((cell) => !isEmptyCell(cell)).length;
+  return valuedCount / component.length < SPARSE_TABLE_VALUE_RATIO;
+}
+
 function drawioCellStyle(cell: Dict, styles: Record<number, Dict>): string {
   const style = styles[Number(cell.style_id || 0)] || {};
   if (isTableCell(cell, styles)) {
@@ -547,7 +584,37 @@ function drawioCellStyle(cell: Dict, styles: Record<number, Dict>): string {
   return "text;html=1;fillColor=none;strokeColor=none;align=center;verticalAlign=middle;fontSize=11;";
 }
 
-function findTableComponents(cells: Dict[], styles: Record<number, Dict>): Dict[][] {
+function drawingBounds(sheet: Dict): Dict[] {
+  return (sheet.drawings || [])
+    .filter((drawing: Dict) => drawing.kind === "vertex" || drawing.kind === "edge" || drawing.kind === "image")
+    .map((drawing: Dict) => ({
+      x: Number(drawing.x || 0),
+      y: Number(drawing.y || 0),
+      width: Number(drawing.width || 0),
+      height: Number(drawing.height || 0)
+    }));
+}
+
+function overlaps(a: Dict, b: Dict): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+function isRelatedToDrawing(cell: Dict, colWidths: Record<number, number>, rowHeights: Record<number, number>, bounds: Dict[]): boolean {
+  if (!bounds.length) {
+    return false;
+  }
+  const geometry = cellGeometry(cell, colWidths, rowHeights);
+  return bounds.some((bound) => overlaps(geometry, bound));
+}
+
+function filterSparseHugeComponent(component: Dict[], colWidths: Record<number, number>, rowHeights: Record<number, number>, bounds: Dict[]): Dict[] {
+  if (!isSparseHugeComponent(component)) {
+    return component;
+  }
+  return component.filter((cell) => !isEmptyCell(cell) || isRelatedToDrawing(cell, colWidths, rowHeights, bounds));
+}
+
+function findTableComponents(cells: Dict[], styles: Record<number, Dict>, colWidths: Record<number, number>, rowHeights: Record<number, number>, bounds: Dict[]): Dict[][] {
   const tableCells = new Map<string, Dict>();
   for (const cell of cells) {
     if (isTableCell(cell, styles)) {
@@ -575,7 +642,10 @@ function findTableComponents(cells: Dict[], styles: Record<number, Dict>): Dict[
         }
       }
     }
-    components.push(component);
+    const filteredComponent = filterSparseHugeComponent(component, colWidths, rowHeights, bounds);
+    if (filteredComponent.length) {
+      components.push(filteredComponent);
+    }
   }
   return components;
 }
@@ -616,7 +686,7 @@ function buildHtmlTable(component: Dict[], styles: Record<number, Dict>, colWidt
     for (let col = geometry.min_col; col <= geometry.max_col; col += 1) {
       const colWidth = colWidths[col] || excelColWidthToPx(DEFAULT_COL_WIDTH);
       const cell = byPosition.get(`${row},${col}`);
-      const value = cell ? xmlEscape(String(cell.value || "")) : "";
+      const value = cell ? xmlEscape(cellText(cell)) : "";
       lines.push(`<td style="${htmlTdStyle(cell, styles, colWidth, rowHeight)}">${value}</td>`);
     }
     lines.push("</tr>");
@@ -627,7 +697,8 @@ function buildHtmlTable(component: Dict[], styles: Record<number, Dict>, colWidt
 
 function appendHtmlTableVertices(xmlCells: string[], sheet: Dict, styles: Record<number, Dict>, colWidths: Record<number, number>, rowHeights: Record<number, number>): Set<string> {
   const tableCellRefs = new Set<string>();
-  for (const component of findTableComponents(sheet.cells || [], styles)) {
+  const bounds = drawingBounds(sheet);
+  for (const component of findTableComponents(sheet.cells || [], styles, colWidths, rowHeights, bounds)) {
     if (!component.length) {
       continue;
     }
@@ -650,11 +721,11 @@ function appendCellVertices(xmlCells: string[], sheet: Dict): void {
   const rowHeights = rowHeightMap(sheet);
   const tableCellRefs = appendHtmlTableVertices(xmlCells, sheet, styles, colWidths, rowHeights);
   for (const cell of sheet.cells || []) {
-    if (tableCellRefs.has(String(cell.ref))) {
+    if (tableCellRefs.has(String(cell.ref)) || isEmptyCell(cell)) {
       continue;
     }
     const geometry = cellGeometry(cell, colWidths, rowHeights);
-    xmlCells.push(`        <mxCell id="cell-${cell.ref}" value=${quoteAttr(String(cell.value || ""))} style=${quoteAttr(drawioCellStyle(cell, styles))} vertex="1" parent="1">`);
+    xmlCells.push(`        <mxCell id="cell-${cell.ref}" value=${quoteAttr(cellText(cell))} style=${quoteAttr(drawioCellStyle(cell, styles))} vertex="1" parent="1">`);
     xmlCells.push(`          <mxGeometry x="${geometry.x}" y="${geometry.y}" width="${geometry.width}" height="${geometry.height}" as="geometry"/>`);
     xmlCells.push("        </mxCell>");
   }

@@ -53,6 +53,7 @@ test("UT-F01-007: 図形がvertexとして出力される", async () => {
 
   assert.ok(shapeVertices.length >= 3, `図形vertex数: ${shapeVertices.length}`);
   assert.ok(shapeValues.length >= 1, "テキスト付き図形が1件以上出力されること");
+  assert.ok(xml.length < 5 * 1024 * 1024, `Draw.io XMLサイズ: ${xml.length} bytes`);
 });
 
 test("UT-F01-008: 矢印がedgeとして出力され、終端矢印を持つ", async () => {
