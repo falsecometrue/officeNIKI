@@ -16,6 +16,7 @@ type Context = {
   resourceDir: string;
   rels: Record<string, Relationship>;
   styles: Record<string, StyleInfo>;
+  numbering: NumberingInfo;
   copiedResources: Record<string, string>;
 };
 
@@ -24,6 +25,14 @@ type Block = Record<string, any>;
 type StyleInfo = {
   run?: Record<string, any>;
   paragraph?: Record<string, any>;
+};
+type NumberingLevel = {
+  format: string;
+  text: string;
+};
+type NumberingInfo = {
+  nums: Record<string, string>;
+  levels: Record<string, Record<string, NumberingLevel>>;
 };
 
 export async function convertDocxToMarkdown(sourcePath: string): Promise<string> {
@@ -129,6 +138,39 @@ function parseStyles(zip: AdmZip): Record<string, StyleInfo> {
   return styles;
 }
 
+function parseNumbering(zip: AdmZip): NumberingInfo {
+  if (!hasEntry(zip, "word/numbering.xml")) {
+    return { nums: {}, levels: {} };
+  }
+  const root = readXml(zip, "word/numbering.xml");
+  const numbering = root.numbering || {};
+  const levels: Record<string, Record<string, NumberingLevel>> = {};
+  for (const abstractNum of asArray<any>(numbering.abstractNum)) {
+    const abstractNumId = String(abstractNum.abstractNumId || "");
+    if (!abstractNumId) {
+      continue;
+    }
+    levels[abstractNumId] = {};
+    for (const lvl of asArray<any>(abstractNum.lvl)) {
+      const ilvl = String(lvl.ilvl || "0");
+      levels[abstractNumId][ilvl] = {
+        format: String(first<any>(lvl, "numFmt")?.val || ""),
+        text: String(first<any>(lvl, "lvlText")?.val || "")
+      };
+    }
+  }
+
+  const nums: Record<string, string> = {};
+  for (const num of asArray<any>(numbering.num)) {
+    const numId = String(num.numId || "");
+    const abstractNumId = String(first<any>(num, "abstractNumId")?.val || "");
+    if (numId && abstractNumId) {
+      nums[numId] = abstractNumId;
+    }
+  }
+  return { nums, levels };
+}
+
 function parseParagraphProperties(ppr: XmlNode | undefined): Record<string, any> {
   const jc = first<any>(ppr, "jc");
   const align = String(jc?.val || "");
@@ -141,6 +183,23 @@ function paragraphFormat(paragraph: XmlNode, styles: Record<string, StyleInfo>):
   return {
     ...(styles[style]?.paragraph || {}),
     ...parseParagraphProperties(ppr)
+  };
+}
+
+function paragraphNumbering(paragraph: XmlNode, numbering: NumberingInfo): Record<string, any> | undefined {
+  const numPr = first<any>(first<any>(paragraph, "pPr"), "numPr");
+  const numId = String(first<any>(numPr, "numId")?.val || "");
+  const ilvl = String(first<any>(numPr, "ilvl")?.val || "0");
+  const abstractNumId = numbering.nums[numId];
+  const level = abstractNumId ? numbering.levels[abstractNumId]?.[ilvl] : undefined;
+  if (!numId || !level) {
+    return undefined;
+  }
+  return {
+    numId,
+    ilvl: Number(ilvl) || 0,
+    format: level.format,
+    text: level.text
   };
 }
 
@@ -448,6 +507,7 @@ function parseDocx(sourceDocx: string, outputDir: string): Record<string, any> {
     resourceDir,
     rels: parseRelationships(zip),
     styles: parseStyles(zip),
+    numbering: parseNumbering(zip),
     copiedResources: {}
   };
   const document = readXml(zip, "word/document.xml");
@@ -461,39 +521,46 @@ function parseDocx(sourceDocx: string, outputDir: string): Record<string, any> {
   const shapes: Drawing[] = [];
   const charts: Drawing[] = [];
   let index = 0;
-  for (const [key, value] of childEntries(body)) {
-    for (const child of asArray<any>(value)) {
-      if (key === "p") {
-        const drawings: Drawing[] = [];
-        for (const drawing of findAll(child, "drawing")) {
-          drawings.push(...parseDrawing(drawing, ctx, zip));
-        }
-        for (const drawing of drawings) {
-          if (drawing.type === "image") {
-            images.push(drawing);
-          } else if (drawing.type === "chart") {
-            charts.push(drawing);
-          } else {
-            shapes.push(drawing);
+
+  const appendBlocks = (container: XmlNode) => {
+    for (const [key, value] of childEntries(container)) {
+      for (const child of asArray<any>(value)) {
+        if (key === "p") {
+          const drawings: Drawing[] = [];
+          for (const drawing of findAll(child, "drawing")) {
+            drawings.push(...parseDrawing(drawing, ctx, zip));
           }
+          for (const drawing of drawings) {
+            if (drawing.type === "image") {
+              images.push(drawing);
+            } else if (drawing.type === "chart") {
+              charts.push(drawing);
+            } else {
+              shapes.push(drawing);
+            }
+          }
+          blocks.push({
+            type: "paragraph",
+            index,
+            style: paragraphStyle(child),
+            text: directParagraphText(child),
+            runs: parseRuns(child, ctx.styles),
+            paragraph_format: paragraphFormat(child, ctx.styles),
+            numbering: paragraphNumbering(child, ctx.numbering),
+            drawings
+          });
+        } else if (key === "tbl") {
+          const table = parseTable(child);
+          table.index = index;
+          blocks.push(table);
+        } else if (child && typeof child === "object") {
+          appendBlocks(child);
         }
-        blocks.push({
-          type: "paragraph",
-          index,
-          style: paragraphStyle(child),
-          text: directParagraphText(child),
-          runs: parseRuns(child, ctx.styles),
-          paragraph_format: paragraphFormat(child, ctx.styles),
-          drawings
-        });
-      } else if (key === "tbl") {
-        const table = parseTable(child);
-        table.index = index;
-        blocks.push(table);
+        index += 1;
       }
-      index += 1;
     }
-  }
+  };
+  appendBlocks(body);
 
   return {
     document: {
@@ -514,7 +581,7 @@ function parseDocx(sourceDocx: string, outputDir: string): Record<string, any> {
 }
 
 function mdEscapeTableCell(value: string): string {
-  return value.replace(/\|/g, "\\|").replace(/\n/g, "<br>");
+  return htmlEscape(value).replace(/\|/g, "\\|").replace(/\n/g, "<br>");
 }
 
 function htmlEscape(value: string): string {
@@ -573,7 +640,7 @@ function renderRun(run: Record<string, any>): string {
     "background-color": run.highlight ? cssHighlightColor(String(run.highlight)) : undefined
   });
   const needsHtml = Boolean(styles || run.underline);
-  let rendered = needsHtml ? htmlEscape(text) : text;
+  let rendered = htmlEscape(text);
 
   if (styles) {
     rendered = `<span style="${styles}">${rendered}</span>`;
@@ -593,7 +660,7 @@ function renderRun(run: Record<string, any>): string {
 function renderRuns(block: Block): string {
   const runs = asArray<Record<string, any>>(block.runs);
   if (!runs.length) {
-    return String(block.text || "");
+    return htmlEscape(String(block.text || ""));
   }
   return runs.map(renderRun).join("").trim();
 }
@@ -611,6 +678,21 @@ function renderParagraphText(block: Block, includeParagraphStyle = true): string
     return rendered;
   }
   return `<p style="text-align:${cssAlign[align]}">${rendered}</p>`;
+}
+
+function renderListPrefix(block: Block): string {
+  const numbering = block.numbering;
+  if (!numbering) {
+    return "";
+  }
+  const indent = "  ".repeat(Number(numbering.ilvl || 0));
+  if (String(numbering.format) === "bullet") {
+    const marker = String(numbering.text || "-");
+    const normalizedMarker = ["", "", "●", "•", "o"].includes(marker) ? "-" : marker;
+    return `${indent}${normalizedMarker} `;
+  }
+  const marker = String(numbering.text || "1.").replace(/%\d+/g, "1");
+  return `${indent}${marker} `;
 }
 
 function visibleImageDrawings(block: Block): Drawing[] {
@@ -645,7 +727,7 @@ function markdownForBlock(block: Block): string[] {
       lines.push(`${"#".repeat(level)} ${renderedText}`);
     } else {
       const renderedText = renderParagraphText(block);
-      lines.push(renderedText);
+      lines.push(`${renderListPrefix(block)}${renderedText}`);
     }
   }
 
@@ -656,8 +738,14 @@ function markdownForBlock(block: Block): string[] {
         continue;
       }
       const resource = drawing.resource;
-      const alt = drawing.description || drawing.name || path.basename(resource.path);
-      lines.push(`![${alt}](${resource.path})`);
+      const alt = htmlEscape(String(drawing.description || drawing.name || path.basename(resource.path))).replace(/"/g, "&quot;");
+      const width = Number(drawing.size?.width_px || 0);
+      const height = Number(drawing.size?.height_px || 0);
+      if (width > 0 && height > 0) {
+        lines.push(`<img src="${resource.path}" alt="${alt}" width="${Math.round(width)}" height="${Math.round(height)}">`);
+      } else {
+        lines.push(`![${alt}](${resource.path})`);
+      }
     } else if (drawing.type === "shape_text") {
       const mermaid = drawing.mermaid_candidate;
       if (mermaid) {

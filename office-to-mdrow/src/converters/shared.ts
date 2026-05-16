@@ -8,7 +8,8 @@ const parser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "",
   removeNSPrefix: true,
-  textNodeName: "#text"
+  textNodeName: "#text",
+  trimValues: false
 });
 
 export function parseXml(text: string): XmlNode {
@@ -69,7 +70,41 @@ export function childEntries(node: any): Array<[string, any]> {
   if (!node || typeof node !== "object") {
     return [];
   }
-  return Object.entries(node).filter(([key]) => !key.startsWith("#") && key !== ":@");
+  const attributeKeys = new Set([
+    "val",
+    "space",
+    "id",
+    "embed",
+    "link",
+    "name",
+    "descr",
+    "cx",
+    "cy",
+    "Target",
+    "TargetMode",
+    "Type",
+    "Id",
+    "idx",
+    "uri",
+    "styleId",
+    "styleID",
+    "ilvl",
+    "abstractNumId",
+    "numId",
+    "ascii",
+    "eastAsia",
+    "hAnsi",
+    "cs",
+    "hint",
+    "type",
+    "rsidR",
+    "rsidRPr",
+    "rsidRDefault",
+    "rsidP",
+    "paraId",
+    "textId"
+  ]);
+  return Object.entries(node).filter(([key]) => !key.startsWith("#") && key !== ":@" && !attributeKeys.has(key));
 }
 
 export function findAll(node: any, key: string): any[] {
