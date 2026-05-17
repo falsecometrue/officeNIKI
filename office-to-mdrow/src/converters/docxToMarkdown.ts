@@ -1,7 +1,21 @@
 import * as fs from "fs";
 import * as path from "path";
 import AdmZip = require("adm-zip");
-import { asArray, childEntries, findAll, first, hasEntry, readBuffer, readXml, textContent, XmlNode } from "./shared";
+import {
+  asArray,
+  childEntries,
+  findAll,
+  first,
+  hasEntry,
+  isExternalRelationshipTarget,
+  openOfficeZip,
+  readImage,
+  readXml,
+  resolvePackagePath,
+  sanitizeMermaidText,
+  textContent,
+  XmlNode
+} from "./shared";
 
 const EMU_PER_PIXEL = 9525;
 
@@ -49,14 +63,16 @@ function parseRelationships(zip: AdmZip): Record<string, Relationship> {
   const root = readXml(zip, "word/_rels/document.xml.rels");
   const rels: Record<string, Relationship> = {};
   for (const rel of asArray<any>(root.Relationships?.Relationship)) {
-    let target = String(rel.Target || "");
-    if (target && !target.startsWith("/")) {
-      target = `word/${target}`;
-    } else if (target.startsWith("/")) {
-      target = target.slice(1);
+    const type = String(rel.Type || "");
+    if (!type.endsWith("/image") && !type.endsWith("/chart")) {
+      continue;
     }
+    if (isExternalRelationshipTarget(rel.Target, rel.TargetMode)) {
+      continue;
+    }
+    const target = resolvePackagePath("word/document.xml", String(rel.Target || ""), "word/");
     rels[String(rel.Id)] = {
-      type: String(rel.Type || ""),
+      type,
       target
     };
   }
@@ -86,10 +102,13 @@ function parseImageSize(data: Buffer, suffix: string): Record<string, number> | 
   return undefined;
 }
 
-function copyResource(ctx: Context, zip: AdmZip, target: string): Record<string, any> {
+function copyResource(ctx: Context, zip: AdmZip, target: string): Record<string, any> | undefined {
+  const image = readImage(zip, target);
+  if (!image) {
+    return undefined;
+  }
   let relPath = ctx.copiedResources[target];
   if (!relPath) {
-    const data = readBuffer(zip, target);
     let dest = path.join(ctx.resourceDir, path.basename(target));
     if (fs.existsSync(dest)) {
       const parsed = path.parse(dest);
@@ -99,18 +118,17 @@ function copyResource(ctx: Context, zip: AdmZip, target: string): Record<string,
       }
       dest = path.join(parsed.dir, `${parsed.name}_${n}${parsed.ext}`);
     }
-    fs.writeFileSync(dest, data);
+    fs.writeFileSync(dest, image.data);
     relPath = path.relative(ctx.outputDir, dest).split(path.sep).join("/");
     ctx.copiedResources[target] = relPath;
   }
 
-  const data = readBuffer(zip, target);
   const suffix = path.extname(target);
   return {
     source: target,
     path: relPath,
     content_type_hint: suffix.toLowerCase().replace(/^\./, ""),
-    ...(parseImageSize(data, suffix) || {})
+    ...(parseImageSize(image.data, suffix) || {})
   };
 }
 
@@ -453,12 +471,15 @@ function parseDrawing(drawing: XmlNode, ctx: Context, zip: AdmZip): Drawing[] {
     if (!rid || !rel) {
       continue;
     }
-    elements.push({
-      ...base,
-      type: "image",
-      relationship_id: rid,
-      resource: copyResource(ctx, zip, rel.target)
-    });
+    const resource = copyResource(ctx, zip, rel.target);
+    if (resource) {
+      elements.push({
+        ...base,
+        type: "image",
+        relationship_id: rid,
+        resource
+      });
+    }
   }
 
   const shapeText = allText(drawing);
@@ -467,7 +488,10 @@ function parseDrawing(drawing: XmlNode, ctx: Context, zip: AdmZip): Drawing[] {
     const mermaid = labels.length >= 2
       ? {
           type: "flowchart_lr",
-          code: ["flowchart LR", `  A[${labels[0]}] --> B[${labels[1]}]`].join("\n"),
+          code: [
+            "flowchart LR",
+            `  A[${sanitizeMermaidText(labels[0], "開始")}] --> B[${sanitizeMermaidText(labels[1], "終了")}]`
+          ].join("\n"),
           note: "図形内テキストから推定した候補。矢印や配置は docx XML だけでは確定できない。"
         }
       : undefined;
@@ -500,7 +524,7 @@ function parseDocx(sourceDocx: string, outputDir: string): Record<string, any> {
   fs.rmSync(resourceDir, { recursive: true, force: true });
   fs.mkdirSync(resourceDir, { recursive: true });
 
-  const zip = new AdmZip(sourceDocx);
+  const zip = openOfficeZip(sourceDocx);
   const ctx: Context = {
     sourceDocx,
     outputDir,

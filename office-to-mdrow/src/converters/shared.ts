@@ -1,8 +1,23 @@
+import * as fs from "fs";
 import * as path from "path";
 import AdmZip = require("adm-zip");
 import { XMLParser } from "fast-xml-parser";
 
 export type XmlNode = Record<string, any>;
+
+const MAX_PACKAGE_BYTES = 100 * 1024 * 1024;
+const MAX_ZIP_ENTRIES = 5000;
+const MAX_ENTRY_BYTES = 50 * 1024 * 1024;
+const MAX_XML_ENTRY_BYTES = 20 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  ".gif": "image/gif",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp"
+};
 
 const parser = new XMLParser({
   ignoreAttributes: false,
@@ -16,36 +31,132 @@ export function parseXml(text: string): XmlNode {
   return parser.parse(text);
 }
 
-export function readXml(zip: AdmZip, name: string): XmlNode {
-  const entry = zip.getEntry(name);
-  if (!entry) {
-    throw new Error(`Office package entry not found: ${name}`);
+export function openOfficeZip(filePath: string): AdmZip {
+  const stat = fs.statSync(filePath);
+  if (stat.size > MAX_PACKAGE_BYTES) {
+    throw new Error(`Office file is too large. Max ${Math.round(MAX_PACKAGE_BYTES / 1024 / 1024)} MB is supported.`);
   }
-  return parseXml(entry.getData().toString("utf8"));
+
+  const zip = new AdmZip(filePath);
+  const zipEntries = zip.getEntries();
+  if (zipEntries.length > MAX_ZIP_ENTRIES) {
+    throw new Error(`Office package has too many entries. Max ${MAX_ZIP_ENTRIES} entries are supported.`);
+  }
+
+  for (const entry of zipEntries) {
+    normalizePackageEntryPath(entry.entryName);
+    if (!entry.isDirectory && Number(entry.header.size || 0) > MAX_ENTRY_BYTES) {
+      throw new Error(`Office package entry is too large: ${entry.entryName}`);
+    }
+  }
+  return zip;
+}
+
+function hasUriScheme(value: string): boolean {
+  return /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value);
+}
+
+function pathSegments(value: string): string[] {
+  return value.split("/").filter((segment) => segment.length > 0);
+}
+
+export function isExternalRelationshipTarget(target: string | undefined, targetMode?: string): boolean {
+  const mode = String(targetMode || "").toLowerCase();
+  const value = String(target || "").trim();
+  return mode === "external" || hasUriScheme(value);
+}
+
+export function normalizePackageEntryPath(name: string): string {
+  const normalizedSlashes = String(name || "").replace(/\\/g, "/");
+  if (!normalizedSlashes || normalizedSlashes.includes("\0") || normalizedSlashes.startsWith("/") || hasUriScheme(normalizedSlashes)) {
+    throw new Error(`Unsafe Office package path: ${name}`);
+  }
+  if (pathSegments(normalizedSlashes).some((segment) => segment === "." || segment === "..")) {
+    throw new Error(`Unsafe Office package path: ${name}`);
+  }
+  const normalized = path.posix.normalize(normalizedSlashes);
+  if (!normalized || normalized === "." || normalized.startsWith("../") || normalized === ".." || path.posix.isAbsolute(normalized)) {
+    throw new Error(`Unsafe Office package path: ${name}`);
+  }
+  return normalized;
+}
+
+function assertPackagePathInRoot(name: string, allowedRoot: string | undefined): void {
+  if (!allowedRoot) {
+    return;
+  }
+  const root = normalizePackageEntryPath(allowedRoot).replace(/\/?$/, "/");
+  if (name !== root.slice(0, -1) && !name.startsWith(root)) {
+    throw new Error(`Office package path escapes expected root: ${name}`);
+  }
+}
+
+export function resolvePackagePath(baseFile: string, target: string, allowedRoot?: string): string {
+  const base = normalizePackageEntryPath(baseFile);
+  const normalizedTarget = String(target || "").replace(/\\/g, "/");
+  if (!normalizedTarget || normalizedTarget.includes("\0") || hasUriScheme(normalizedTarget)) {
+    throw new Error(`Unsafe Office relationship target: ${target}`);
+  }
+
+  const joined = normalizedTarget.startsWith("/")
+    ? normalizedTarget.replace(/^\/+/, "")
+    : path.posix.join(path.posix.dirname(base), normalizedTarget);
+  const resolved = path.posix.normalize(joined);
+  if (!resolved || resolved === "." || resolved.startsWith("../") || resolved === ".." || path.posix.isAbsolute(resolved)) {
+    throw new Error(`Office relationship target escapes package root: ${target}`);
+  }
+  assertPackagePathInRoot(resolved, allowedRoot);
+  return resolved;
+}
+
+function entryData(entry: AdmZip.IZipEntry, maxBytes: number): Buffer {
+  if (Number(entry.header.size || 0) > maxBytes) {
+    throw new Error(`Office package entry exceeds size limit: ${entry.entryName}`);
+  }
+  const data = entry.getData();
+  if (data.length > maxBytes) {
+    throw new Error(`Office package entry exceeds size limit: ${entry.entryName}`);
+  }
+  return data;
+}
+
+export function readXml(zip: AdmZip, name: string): XmlNode {
+  const entryName = normalizePackageEntryPath(name);
+  const entry = zip.getEntry(entryName);
+  if (!entry) {
+    throw new Error(`Office package entry not found: ${entryName}`);
+  }
+  return parseXml(entryData(entry, MAX_XML_ENTRY_BYTES).toString("utf8"));
 }
 
 export function readText(zip: AdmZip, name: string): string {
-  const entry = zip.getEntry(name);
+  const entryName = normalizePackageEntryPath(name);
+  const entry = zip.getEntry(entryName);
   if (!entry) {
-    throw new Error(`Office package entry not found: ${name}`);
+    throw new Error(`Office package entry not found: ${entryName}`);
   }
-  return entry.getData().toString("utf8");
+  return entryData(entry, MAX_XML_ENTRY_BYTES).toString("utf8");
 }
 
-export function readBuffer(zip: AdmZip, name: string): Buffer {
-  const entry = zip.getEntry(name);
+export function readBuffer(zip: AdmZip, name: string, maxBytes = MAX_ENTRY_BYTES): Buffer {
+  const entryName = normalizePackageEntryPath(name);
+  const entry = zip.getEntry(entryName);
   if (!entry) {
-    throw new Error(`Office package entry not found: ${name}`);
+    throw new Error(`Office package entry not found: ${entryName}`);
   }
-  return entry.getData();
+  return entryData(entry, maxBytes);
 }
 
 export function hasEntry(zip: AdmZip, name: string): boolean {
-  return Boolean(zip.getEntry(name));
+  try {
+    return Boolean(zip.getEntry(normalizePackageEntryPath(name)));
+  } catch {
+    return false;
+  }
 }
 
 export function entries(zip: AdmZip): string[] {
-  return zip.getEntries().map((entry: AdmZip.IZipEntry) => entry.entryName);
+  return zip.getEntries().map((entry: AdmZip.IZipEntry) => normalizePackageEntryPath(entry.entryName));
 }
 
 export function asArray<T>(value: T | T[] | undefined | null): T[] {
@@ -143,13 +254,6 @@ export function textContent(node: any): string {
   return text;
 }
 
-export function resolvePackagePath(baseFile: string, target: string): string {
-  if (target.startsWith("/")) {
-    return target.slice(1);
-  }
-  return path.posix.normalize(path.posix.join(path.posix.dirname(baseFile), target));
-}
-
 export function xmlEscape(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -159,6 +263,36 @@ export function xmlEscape(value: string): string {
 
 export function quoteAttr(value: string): string {
   return `"${xmlEscape(value).replace(/"/g, "&quot;")}"`;
+}
+
+export function imageMimeType(packagePath: string): string | undefined {
+  return IMAGE_MIME_BY_EXT[path.posix.extname(packagePath).toLowerCase()];
+}
+
+export function readImage(zip: AdmZip, packagePath: string): { data: Buffer; mime: string } | undefined {
+  const entryName = normalizePackageEntryPath(packagePath);
+  const mime = imageMimeType(entryName);
+  if (!mime) {
+    return undefined;
+  }
+  return {
+    data: readBuffer(zip, entryName, MAX_IMAGE_BYTES),
+    mime
+  };
+}
+
+export function sanitizeMermaidText(value: string, fallback = "message"): string {
+  const sanitized = String(value || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[`$]/g, "'")
+    .replace(/[%{}[\]<>|]/g, " ")
+    .replace(/-{2,}|={2,}|-{1,}>|<-{1,}/g, " ")
+    .replace(/:/g, "：")
+    .replace(/;/g, "；")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120);
+  return sanitized || fallback;
 }
 
 export function round(value: number, digits = 2): number {

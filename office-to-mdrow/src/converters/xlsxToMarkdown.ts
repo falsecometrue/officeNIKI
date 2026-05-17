@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import AdmZip = require("adm-zip");
-import { readBuffer } from "./shared";
+import { openOfficeZip, readImage, sanitizeMermaidText } from "./shared";
 import { buildXlsxIntermediate, XlsxDict } from "./xlsxToDrawio";
 
 type Dict = XlsxDict;
@@ -66,7 +66,7 @@ export async function convertXlsxToMarkdown(sourcePath: string): Promise<string>
 
   const intermediate = buildXlsxIntermediate(sourcePath);
   const ctx: ResourceContext = {
-    zip: new AdmZip(sourcePath),
+    zip: openOfficeZip(sourcePath),
     resourceDir,
     linkBaseDir: sheetsDir
   };
@@ -387,22 +387,26 @@ function renderCellValue(cell: Dict | undefined, styles: Record<number, Dict>): 
 
 function copySheetImages(sheet: Dict, sheetFileName: string, ctx: ResourceContext): RenderedImage[] {
   const images = (sheet.drawings || []).filter((drawing: Dict) => drawing.kind === "image" && drawing.path);
-  return images.map((image: Dict, index: number) => {
+  return images.flatMap((image: Dict, index: number) => {
     const sourcePath = String(image.path);
+    const sourceImage = readImage(ctx.zip, sourcePath);
+    if (!sourceImage) {
+      return [];
+    }
     const ext = imageExtension(sourcePath);
     const fileName = `${sheetFileName}-${index + 1}${ext}`;
     const destination = path.join(ctx.resourceDir, fileName);
-    fs.writeFileSync(destination, readBuffer(ctx.zip, sourcePath));
+    fs.writeFileSync(destination, sourceImage.data);
     const relPath = path.relative(ctx.linkBaseDir, destination).split(path.sep).join("/");
     const alt = htmlAttr(String(image.name || path.parse(fileName).name));
     const width = Number(image.width || 0);
     const displayWidth = width > 0 ? Math.min(Math.max(Math.round(width), 320), 640) : 640;
     const html = `<img src="${htmlAttr(relPath)}" alt="${alt}" width="${displayWidth}">`;
-    return {
+    return [{
       x: Number(image.x || 0),
       y: Number(image.y || 0),
       html
-    };
+    }];
   });
 }
 
@@ -443,7 +447,7 @@ function mermaidSequenceDiagram(sheet: Dict): MermaidBlock | undefined {
 }
 
 function mermaidText(value: string): string {
-  return value.replace(/\r?\n/g, " ").replace(/:/g, "：").trim() || "message";
+  return sanitizeMermaidText(value, "message");
 }
 
 function imageExtension(sourcePath: string): string {

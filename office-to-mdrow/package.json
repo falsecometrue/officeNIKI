@@ -24,6 +24,12 @@
     "onCommand:officeToMdrow.convertPowerPointToMarp",
     "onCommand:officeToMdrow.convertOfficeFile"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Officeファイルの内容を読み取り、変換結果をワークスペース内に書き込むため、信頼済みワークスペースでのみ有効です。"
+    }
+  },
   "main": "./out/extension.js",
   "contributes": {
     "commands": [

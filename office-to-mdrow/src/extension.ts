@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 import { convertDocxToMarkdown } from "./converters/docxToMarkdown";
@@ -52,6 +53,16 @@ async function convertSelectedFile(
     return;
   }
 
+  if (!vscode.workspace.isTrusted) {
+    vscode.window.showErrorMessage("未信頼ワークスペースではOfficeファイル変換を実行できません。ワークスペースを信頼してから再実行してください。");
+    return;
+  }
+
+  const shouldContinue = await confirmOverwriteIfNeeded(kind, target.fsPath);
+  if (!shouldContinue) {
+    return;
+  }
+
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -80,21 +91,57 @@ function kindFromPath(filePath: string): ConvertKind | undefined {
   return undefined;
 }
 
+function plannedOutputPath(kind: ConvertKind, sourcePath: string): string {
+  const parsed = path.parse(sourcePath);
+  if (kind === "excel-drawio") {
+    return path.join(parsed.dir, `${parsed.name}.drawio`);
+  }
+  return path.join(parsed.dir, parsed.name);
+}
+
+async function confirmOverwriteIfNeeded(kind: ConvertKind, sourcePath: string): Promise<boolean> {
+  const outputPath = plannedOutputPath(kind, sourcePath);
+  if (!fs.existsSync(outputPath)) {
+    return true;
+  }
+
+  const outputName = path.basename(outputPath);
+  const choice = await vscode.window.showWarningMessage(
+    `既存の変換結果「${outputName}」を上書きします。よろしいですか？`,
+    { modal: true },
+    "上書きする"
+  );
+  return choice === "上書きする";
+}
+
+function safeErrorMessage(error: unknown, sourcePath: string): string {
+  const raw = error instanceof Error ? error.message : String(error);
+  const basename = path.basename(sourcePath);
+  const dirname = path.dirname(sourcePath);
+  return raw
+    .split(sourcePath).join(basename)
+    .split(dirname).join("[source directory]")
+    .slice(0, 500);
+}
+
 async function runConverter(kind: ConvertKind, sourcePath: string): Promise<string> {
   output.show(true);
-  output.appendLine(`> office-to-mdraw ${kind} ${sourcePath}`);
+  output.appendLine(`> office-to-mdraw ${kind} ${path.basename(sourcePath)}`);
   try {
-    const generatedPath = kind === "excel-drawio"
-      ? await convertXlsxToDrawio(sourcePath)
-      : kind === "excel-md"
-        ? await convertXlsxToMarkdown(sourcePath)
-        : kind === "powerpoint-marp"
-          ? await convertPptxToMarp(sourcePath)
-          : await convertDocxToMarkdown(sourcePath);
-    output.appendLine(`Generated: ${generatedPath}`);
+    let generatedPath: string;
+    if (kind === "excel-drawio") {
+      generatedPath = await convertXlsxToDrawio(sourcePath);
+    } else if (kind === "excel-md") {
+      generatedPath = await convertXlsxToMarkdown(sourcePath);
+    } else if (kind === "powerpoint-marp") {
+      generatedPath = await convertPptxToMarp(sourcePath);
+    } else {
+      generatedPath = await convertDocxToMarkdown(sourcePath);
+    }
+    output.appendLine(`Generated: ${path.basename(generatedPath)}`);
     return generatedPath;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = safeErrorMessage(error, sourcePath);
     output.appendLine(message);
     vscode.window.showErrorMessage(`変換に失敗しました: ${message}`);
     throw error;

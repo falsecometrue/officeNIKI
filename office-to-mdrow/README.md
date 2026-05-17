@@ -108,16 +108,23 @@ marp: true
 
 No Python installation is required. The conversion logic is implemented in TypeScript and runs inside the VS Code extension environment.
 
+The extension is disabled in untrusted workspaces because conversion reads Office package contents and writes generated files next to the selected source file.
+
+Very large or suspicious Office packages are rejected before conversion, including packages with too many ZIP entries, oversized XML entries, oversized images, or excessive sheet/slide counts.
+
 ## Data Usage
 
 - All conversion runs locally on your machine.
 - Selected Office file contents are used only to generate the converted output.
 - This extension does not upload Office files or conversion results to any external server.
+- This extension does not collect telemetry.
 
 ## Output Policy
 
+- If a conversion target already exists, the extension asks before overwriting it.
 - Intermediate JSON is not kept as a final output.
 - Word images are written to `resources/`.
 - Excel Draw.io images are embedded in the Draw.io XML.
 - Excel Markdown images are written to `resources/`.
 - PowerPoint Marp output references editable `.drawio.svg` slide files only, without separate `.drawio` files.
+- Embedded images are limited to common raster web formats: PNG, JPEG, GIF, and WebP.

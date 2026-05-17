@@ -7,8 +7,10 @@ import {
   findAll,
   first,
   hasEntry,
+  isExternalRelationshipTarget,
+  openOfficeZip,
   quoteAttr,
-  readBuffer,
+  readImage,
   readXml,
   resolvePackagePath,
   round,
@@ -73,10 +75,13 @@ export async function convertPptxToMarp(sourcePath: string): Promise<string> {
   fs.rmSync(slideDir, { recursive: true, force: true });
   fs.mkdirSync(slideDir, { recursive: true });
 
-  const zip = new AdmZip(sourcePath);
+  const zip = openOfficeZip(sourcePath);
   const presentation = readXml(zip, "ppt/presentation.xml").presentation;
   const slideSize = parseSlideSize(presentation?.sldSz);
   const slides = parseSlides(zip);
+  if (slides.length > 300) {
+    throw new Error("PowerPoint file has too many slides. Max 300 slides are supported.");
+  }
 
   const mdLines = ["---", "marp: true", "---", ""];
   slides.forEach((slide, index) => {
@@ -116,6 +121,9 @@ function readRelationships(zip: AdmZip, name: string): Record<string, Relationsh
   const root = readXml(zip, name);
   const rels: Record<string, Relationship> = {};
   for (const rel of asArray<any>(root.Relationships?.Relationship)) {
+    if (isExternalRelationshipTarget(rel.Target, rel.TargetMode)) {
+      continue;
+    }
     rels[String(rel.Id)] = {
       type: String(rel.Type || ""),
       target: String(rel.Target || "")
@@ -134,7 +142,7 @@ function parseSlides(zip: AdmZip): Slide[] {
     if (!target) {
       continue;
     }
-    const slidePath = resolvePackagePath("ppt/presentation.xml", target);
+    const slidePath = resolvePackagePath("ppt/presentation.xml", target, "ppt/");
     const slideRels = readRelationships(zip, `${path.posix.dirname(slidePath)}/_rels/${path.posix.basename(slidePath)}.rels`);
     const root = readXml(zip, slidePath).sld;
     slides.push({
@@ -319,11 +327,9 @@ function imageDataUri(zip: AdmZip, basePath: string, target: string): string {
   if (!target) {
     return "";
   }
-  const imagePath = resolvePackagePath(basePath, target);
-  const data = readBuffer(zip, imagePath);
-  const suffix = path.extname(imagePath).toLowerCase().replace(/^\./, "");
-  const mime = suffix === "jpg" || suffix === "jpeg" ? "image/jpeg" : suffix === "svg" ? "image/svg+xml" : `image/${suffix || "octet-stream"}`;
-  return `data:${mime};base64,${data.toString("base64")}`;
+  const imagePath = resolvePackagePath(basePath, target, "ppt/");
+  const image = readImage(zip, imagePath);
+  return image ? `data:${image.mime};base64,${image.data.toString("base64")}` : "";
 }
 
 function itemsafeName(value: string): string {

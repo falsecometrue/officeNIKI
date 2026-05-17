@@ -7,8 +7,10 @@ import {
   findAll,
   first,
   hasEntry,
+  isExternalRelationshipTarget,
+  openOfficeZip,
   quoteAttr,
-  readBuffer,
+  readImage,
   readXml,
   resolvePackagePath,
   round,
@@ -62,6 +64,9 @@ function readRelationships(zip: AdmZip, name: string): Record<string, Dict> {
   const root = readXml(zip, name);
   const relationships: Record<string, Dict> = {};
   for (const rel of asArray<any>(root.Relationships?.Relationship)) {
+    if (isExternalRelationshipTarget(rel.Target, rel.TargetMode)) {
+      continue;
+    }
     relationships[String(rel.Id)] = {
       type: String(rel.Type || ""),
       target: String(rel.Target || "")
@@ -88,7 +93,7 @@ function parseWorkbook(zip: AdmZip): Dict[] {
       name: String(sheet.name || ""),
       sheet_id: String(sheet.sheetId || ""),
       rel_id: relId,
-      path: target ? resolvePackagePath("xl/workbook.xml", target) : ""
+      path: target ? resolvePackagePath("xl/workbook.xml", target, "xl/") : ""
     };
   });
 }
@@ -230,9 +235,8 @@ function findColor(node: Dict, colorParent: string): string | undefined {
 }
 
 function imageDataUri(zip: AdmZip, imagePath: string): string {
-  const suffix = path.extname(imagePath).toLowerCase().replace(/^\./, "");
-  const mime = suffix === "jpg" || suffix === "jpeg" ? "jpeg" : suffix || "octet-stream";
-  return `data:image/${mime},${readBuffer(zip, imagePath).toString("base64")}`;
+  const image = readImage(zip, imagePath);
+  return image ? `data:${image.mime};base64,${image.data.toString("base64")}` : "";
 }
 
 function excelColWidthToPx(width: number): number {
@@ -369,12 +373,16 @@ function parseDrawingShape(node: Dict, anchorInfo: Dict, kind: "vertex" | "edge"
   return shape;
 }
 
-function parseDrawingPicture(zip: AdmZip, node: Dict, anchorInfo: Dict, drawingRels: Record<string, Dict>, drawingPath: string, pictureIndex: number): Dict {
+function parseDrawingPicture(zip: AdmZip, node: Dict, anchorInfo: Dict, drawingRels: Record<string, Dict>, drawingPath: string, pictureIndex: number): Dict | undefined {
   const nv = findAll(node, "cNvPr")[0];
   const blip = findAll(node, "blip")[0];
   const relId = blip?.embed ? String(blip.embed) : "";
   const target = drawingRels[relId]?.target || "";
-  const imagePath = target ? resolvePackagePath(drawingPath, target) : "";
+  const imagePath = target ? resolvePackagePath(drawingPath, target, "xl/") : "";
+  const dataUri = imagePath ? imageDataUri(zip, imagePath) : "";
+  if (!dataUri) {
+    return undefined;
+  }
   const ext = anchorInfo.ext || {};
   return {
     id: `pic-${pictureIndex}`,
@@ -386,7 +394,7 @@ function parseDrawingPicture(zip: AdmZip, node: Dict, anchorInfo: Dict, drawingR
     y: anchorInfo.y || 0,
     width: ext.width || 120,
     height: ext.height || 80,
-    data_uri: imagePath ? imageDataUri(zip, imagePath) : ""
+    data_uri: dataUri
   };
 }
 
@@ -414,7 +422,10 @@ function parseDrawings(zip: AdmZip, drawingPath: string, rows: Dict[], cols: Dic
         drawings.push(parseDrawingShape(child, anchorInfo, "edge"));
       }
       for (const child of asArray<any>(anchor.pic)) {
-        drawings.push(parseDrawingPicture(zip, child, anchorInfo, drawingRels, drawingPath, pictureIndex));
+        const picture = parseDrawingPicture(zip, child, anchorInfo, drawingRels, drawingPath, pictureIndex);
+        if (picture) {
+          drawings.push(picture);
+        }
         pictureIndex += 1;
       }
       for (const group of asArray<any>(anchor.grpSp)) {
@@ -426,7 +437,10 @@ function parseDrawings(zip: AdmZip, drawingPath: string, rows: Dict[], cols: Dic
           drawings.push(parseDrawingShape(child, anchorInfo, "edge", groupTransform));
         }
         for (const child of asArray<any>(group.pic)) {
-          drawings.push(parseDrawingPicture(zip, child, anchorInfo, drawingRels, drawingPath, pictureIndex));
+          const picture = parseDrawingPicture(zip, child, anchorInfo, drawingRels, drawingPath, pictureIndex);
+          if (picture) {
+            drawings.push(picture);
+          }
           pictureIndex += 1;
         }
       }
@@ -468,22 +482,27 @@ function nearestVertexId(edge: Dict, vertices: Dict[], useEnd: boolean): string 
 function readImages(zip: AdmZip): Dict[] {
   return entries(zip)
     .filter((name) => name.startsWith("xl/media/"))
-    .map((name) => {
-      const suffix = path.extname(name).toLowerCase().replace(/^\./, "");
-      const mime = suffix === "jpg" || suffix === "jpeg" ? "jpeg" : suffix || "octet-stream";
+    .flatMap((name) => {
+      const image = readImage(zip, name);
+      if (!image) {
+        return [];
+      }
       return {
         path: name,
-        mime: `image/${mime}`,
-        base64: readBuffer(zip, name).toString("base64")
+        mime: image.mime,
+        base64: image.data.toString("base64")
       };
     });
 }
 
 export function buildXlsxIntermediate(xlsxPath: string): Dict {
-  const zip = new AdmZip(xlsxPath);
+  const zip = openOfficeZip(xlsxPath);
   const sharedStrings = readSharedStrings(zip);
   const styles = parseStyles(zip);
   const sheetDefs = parseWorkbook(zip);
+  if (sheetDefs.length > 300) {
+    throw new Error("Excel workbook has too many sheets. Max 300 sheets are supported.");
+  }
   const images = readImages(zip);
   const sheets: Dict[] = [];
   for (const sheetDef of sheetDefs) {
@@ -495,7 +514,7 @@ export function buildXlsxIntermediate(xlsxPath: string): Dict {
     const anchors: Dict[] = [];
     for (const rel of Object.values(sheetRels)) {
       if (String(rel.type).endsWith("/drawing")) {
-        const drawingPath = resolvePackagePath(sheetDef.path, String(rel.target));
+        const drawingPath = resolvePackagePath(sheetDef.path, String(rel.target), "xl/");
         const [drawingItems, anchorItems] = parseDrawings(zip, drawingPath, rows, cols);
         drawings.push(...drawingItems);
         anchors.push(...anchorItems);
