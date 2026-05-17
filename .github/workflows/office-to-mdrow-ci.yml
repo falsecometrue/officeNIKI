@@ -1,0 +1,49 @@
+name: office-to-mdrow CI
+
+on:
+  push:
+    paths:
+      - "office-to-mdrow/**"
+      - ".github/workflows/office-to-mdrow-ci.yml"
+  pull_request:
+    paths:
+      - "office-to-mdrow/**"
+      - ".github/workflows/office-to-mdrow-ci.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: office-to-mdrow
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: office-to-mdrow/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Test
+        run: npm test
+
+      - name: Audit runtime dependencies
+        run: npm run audit:runtime
+
+      - name: Audit all dependencies
+        run: npm run audit:all
+
+      - name: Package VSIX
+        run: npm run package
+
+      - name: List VSIX contents
+        run: npx @vscode/vsce ls --tree

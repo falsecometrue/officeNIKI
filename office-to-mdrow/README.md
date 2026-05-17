@@ -128,3 +128,18 @@ Very large or suspicious Office packages are rejected before conversion, includi
 - Excel Markdown images are written to `resources/`.
 - PowerPoint Marp output references editable `.drawio.svg` slide files only, without separate `.drawio` files.
 - Embedded images are limited to common raster web formats: PNG, JPEG, GIF, and WebP.
+
+## Maintenance
+
+Dependency updates are checked weekly by Dependabot for npm packages under `office-to-mdrow/` and GitHub Actions workflows. Pull requests and pushes that touch this extension run CI with install, compile, tests, dependency audit, VSIX packaging, and VSIX content listing.
+
+## Release Checklist
+
+Run the same checks locally before publishing a VSIX:
+
+```sh
+cd office-to-mdrow
+npm run release:check
+```
+
+The release check performs a clean install, compiles TypeScript, runs unit and security tests, runs runtime and full dependency audits, builds the VSIX, and lists the files included in the package.

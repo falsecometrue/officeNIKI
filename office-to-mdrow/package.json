@@ -4,6 +4,7 @@
   "description": "Convert Office files from the VS Code explorer context menu.",
   "version": "0.0.3",
   "publisher": "SAKIYAMA-KANAU",
+  "license": "MIT",
   "icon": "image/icon.png",
   "repository": {
     "type": "git",
@@ -80,7 +81,10 @@
     }
   },
   "scripts": {
+    "audit:runtime": "npm audit --omit=dev",
+    "audit:all": "npm audit",
     "compile": "tsc -p ./",
+    "release:check": "npm ci && npm run compile && npm test && npm run audit:runtime && npm run audit:all && npm run package && npx @vscode/vsce ls --tree",
     "test": "npm run compile && node --test test/*.test.js",
     "test:vscode": "npm run compile && node test/run-vscode-tests.js",
     "watch": "tsc -watch -p ./",
