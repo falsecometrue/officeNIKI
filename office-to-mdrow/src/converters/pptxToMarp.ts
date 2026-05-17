@@ -4,6 +4,8 @@ import AdmZip = require("adm-zip");
 import {
   asArray,
   childEntries,
+  createTempOutputDirectory,
+  discardTempOutput,
   findAll,
   first,
   hasEntry,
@@ -12,6 +14,7 @@ import {
   quoteAttr,
   readImage,
   readXml,
+  replaceOutputPath,
   resolvePackagePath,
   round,
   textContent,
@@ -70,37 +73,45 @@ type Slide = {
 
 export async function convertPptxToMarp(sourcePath: string): Promise<string> {
   const sourceName = path.parse(sourcePath).name;
-  const outputDir = path.join(path.dirname(sourcePath), sourceName);
+  const finalOutputDir = path.join(path.dirname(sourcePath), sourceName);
+  const finalMarkdownPath = path.join(finalOutputDir, `${sourceName}.md`);
+  const outputDir = createTempOutputDirectory(finalOutputDir);
   const slideDir = path.join(outputDir, "slide");
-  fs.rmSync(slideDir, { recursive: true, force: true });
-  fs.mkdirSync(slideDir, { recursive: true });
 
-  const zip = openOfficeZip(sourcePath);
-  const presentation = readXml(zip, "ppt/presentation.xml").presentation;
-  const slideSize = parseSlideSize(presentation?.sldSz);
-  const slides = parseSlides(zip);
-  if (slides.length > 300) {
-    throw new Error("PowerPoint file has too many slides. Max 300 slides are supported.");
-  }
+  try {
+    fs.mkdirSync(slideDir, { recursive: true });
 
-  const mdLines = ["---", "marp: true", "---", ""];
-  slides.forEach((slide, index) => {
-    const slideNumber = index + 1;
-    const svgName = `slide${String(slideNumber).padStart(3, "0")}.drawio.svg`;
-    fs.writeFileSync(
-      path.join(slideDir, svgName),
-      makeDrawioSvg(slide, slideNumber, slideSize),
-      "utf8"
-    );
-    if (index > 0) {
-      mdLines.push("---", "");
+    const zip = openOfficeZip(sourcePath);
+    const presentation = readXml(zip, "ppt/presentation.xml").presentation;
+    const slideSize = parseSlideSize(presentation?.sldSz);
+    const slides = parseSlides(zip);
+    if (slides.length > 300) {
+      throw new Error("PowerPoint file has too many slides. Max 300 slides are supported.");
     }
-    mdLines.push(`![bg contain](slide/${svgName})`, "");
-  });
 
-  const markdownPath = path.join(outputDir, `${sourceName}.md`);
-  fs.writeFileSync(markdownPath, mdLines.join("\n"), "utf8");
-  return markdownPath;
+    const mdLines = ["---", "marp: true", "---", ""];
+    slides.forEach((slide, index) => {
+      const slideNumber = index + 1;
+      const svgName = `slide${String(slideNumber).padStart(3, "0")}.drawio.svg`;
+      fs.writeFileSync(
+        path.join(slideDir, svgName),
+        makeDrawioSvg(slide, slideNumber, slideSize),
+        "utf8"
+      );
+      if (index > 0) {
+        mdLines.push("---", "");
+      }
+      mdLines.push(`![bg contain](slide/${svgName})`, "");
+    });
+
+    const markdownPath = path.join(outputDir, `${sourceName}.md`);
+    fs.writeFileSync(markdownPath, mdLines.join("\n"), "utf8");
+    replaceOutputPath(outputDir, finalOutputDir, "directory");
+    return finalMarkdownPath;
+  } catch (error) {
+    discardTempOutput(outputDir);
+    throw error;
+  }
 }
 
 function emuToPx(value: unknown): number {

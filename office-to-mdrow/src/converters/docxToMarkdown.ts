@@ -4,6 +4,8 @@ import AdmZip = require("adm-zip");
 import {
   asArray,
   childEntries,
+  createTempOutputDirectory,
+  discardTempOutput,
   findAll,
   first,
   hasEntry,
@@ -11,6 +13,7 @@ import {
   openOfficeZip,
   readImage,
   readXml,
+  replaceOutputPath,
   resolvePackagePath,
   sanitizeMermaidText,
   textContent,
@@ -51,12 +54,19 @@ type NumberingInfo = {
 
 export async function convertDocxToMarkdown(sourcePath: string): Promise<string> {
   const sourceName = path.parse(sourcePath).name;
-  const outputDir = path.join(path.dirname(sourcePath), sourceName);
-  fs.mkdirSync(outputDir, { recursive: true });
+  const finalOutputDir = path.join(path.dirname(sourcePath), sourceName);
+  const finalMarkdownPath = path.join(finalOutputDir, `${sourceName}.md`);
+  const outputDir = createTempOutputDirectory(finalOutputDir);
   const markdownPath = path.join(outputDir, `${sourceName}.md`);
-  const intermediate = parseDocx(sourcePath, outputDir);
-  fs.writeFileSync(markdownPath, buildMarkdown(intermediate), "utf8");
-  return markdownPath;
+  try {
+    const intermediate = parseDocx(sourcePath, outputDir);
+    fs.writeFileSync(markdownPath, buildMarkdown(intermediate), "utf8");
+    replaceOutputPath(outputDir, finalOutputDir, "directory");
+    return finalMarkdownPath;
+  } catch (error) {
+    discardTempOutput(outputDir);
+    throw error;
+  }
 }
 
 function parseRelationships(zip: AdmZip): Record<string, Relationship> {
@@ -521,7 +531,6 @@ function parseTable(table: XmlNode): Block {
 
 function parseDocx(sourceDocx: string, outputDir: string): Record<string, any> {
   const resourceDir = path.join(outputDir, `${path.parse(sourceDocx).name}resource`);
-  fs.rmSync(resourceDir, { recursive: true, force: true });
   fs.mkdirSync(resourceDir, { recursive: true });
 
   const zip = openOfficeZip(sourceDocx);

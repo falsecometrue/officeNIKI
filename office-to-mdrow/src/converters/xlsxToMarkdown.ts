@@ -1,7 +1,14 @@
 import * as fs from "fs";
 import * as path from "path";
 import AdmZip = require("adm-zip");
-import { openOfficeZip, readImage, sanitizeMermaidText } from "./shared";
+import {
+  createTempOutputDirectory,
+  discardTempOutput,
+  openOfficeZip,
+  readImage,
+  replaceOutputPath,
+  sanitizeMermaidText
+} from "./shared";
 import { buildXlsxIntermediate, XlsxDict } from "./xlsxToDrawio";
 
 type Dict = XlsxDict;
@@ -54,38 +61,44 @@ type MermaidBlock = {
 
 export async function convertXlsxToMarkdown(sourcePath: string): Promise<string> {
   const sourceName = path.parse(sourcePath).name;
-  const outputDir = path.join(path.dirname(sourcePath), sourceName);
+  const finalOutputDir = path.join(path.dirname(sourcePath), sourceName);
+  const finalIndexPath = path.join(finalOutputDir, `${sourceName}.md`);
+  const outputDir = createTempOutputDirectory(finalOutputDir);
   const indexPath = path.join(outputDir, `${sourceName}.md`);
   const sheetsDir = path.join(outputDir, "sheets");
   const resourceDir = path.join(outputDir, "resources");
-  fs.rmSync(resourceDir, { recursive: true, force: true });
-  fs.rmSync(sheetsDir, { recursive: true, force: true });
-  fs.mkdirSync(outputDir, { recursive: true });
-  fs.mkdirSync(sheetsDir, { recursive: true });
-  fs.mkdirSync(resourceDir, { recursive: true });
 
-  const intermediate = buildXlsxIntermediate(sourcePath);
-  const ctx: ResourceContext = {
-    zip: openOfficeZip(sourcePath),
-    resourceDir,
-    linkBaseDir: sheetsDir
-  };
+  try {
+    fs.mkdirSync(sheetsDir, { recursive: true });
+    fs.mkdirSync(resourceDir, { recursive: true });
 
-  const sheets = intermediate.sheets || [];
-  const sheetFiles = sheetFileNames(sheets);
-  const indexLines: string[] = [`# ${escapeMarkdownHeading(sourceName)}`, "", "## Sheets", ""];
-  sheets.forEach((sheet: Dict, index: number) => {
-    const sheetName = String(sheet.name || "Sheet");
-    const sheetFileName = sheetFiles[index];
-    const sheetPath = path.join(sheetsDir, sheetFileName);
-    const sheetBaseName = path.parse(sheetFileName).name;
-    const body = buildSheetMarkdown(sheet, sheetBaseName, ctx).trimEnd();
-    fs.writeFileSync(sheetPath, `# ${escapeMarkdownHeading(sheetName)}\n\n${body ? `${body}\n` : ""}`, "utf8");
-    indexLines.push(`- [${escapeMarkdownInline(sheetName)}](sheets/${encodeMarkdownLinkPath(sheetFileName)})`);
-  });
+    const intermediate = buildXlsxIntermediate(sourcePath);
+    const ctx: ResourceContext = {
+      zip: openOfficeZip(sourcePath),
+      resourceDir,
+      linkBaseDir: sheetsDir
+    };
 
-  fs.writeFileSync(indexPath, `${indexLines.join("\n")}\n`, "utf8");
-  return indexPath;
+    const sheets = intermediate.sheets || [];
+    const sheetFiles = sheetFileNames(sheets);
+    const indexLines: string[] = [`# ${escapeMarkdownHeading(sourceName)}`, "", "## Sheets", ""];
+    sheets.forEach((sheet: Dict, index: number) => {
+      const sheetName = String(sheet.name || "Sheet");
+      const sheetFileName = sheetFiles[index];
+      const sheetPath = path.join(sheetsDir, sheetFileName);
+      const sheetBaseName = path.parse(sheetFileName).name;
+      const body = buildSheetMarkdown(sheet, sheetBaseName, ctx).trimEnd();
+      fs.writeFileSync(sheetPath, `# ${escapeMarkdownHeading(sheetName)}\n\n${body ? `${body}\n` : ""}`, "utf8");
+      indexLines.push(`- [${escapeMarkdownInline(sheetName)}](sheets/${encodeMarkdownLinkPath(sheetFileName)})`);
+    });
+
+    fs.writeFileSync(indexPath, `${indexLines.join("\n")}\n`, "utf8");
+    replaceOutputPath(outputDir, finalOutputDir, "directory");
+    return finalIndexPath;
+  } catch (error) {
+    discardTempOutput(outputDir);
+    throw error;
+  }
 }
 
 function sanitizeFileName(value: string): string {

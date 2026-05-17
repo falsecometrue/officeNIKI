@@ -52,6 +52,73 @@ export function openOfficeZip(filePath: string): AdmZip {
   return zip;
 }
 
+function hiddenTempName(finalPath: string, suffix: string): string {
+  const safeName = path.basename(finalPath).replace(/[^A-Za-z0-9._-]/g, "_") || "output";
+  return path.join(
+    path.dirname(finalPath),
+    `.${safeName}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.${suffix}`
+  );
+}
+
+function assertExistingOutputKind(finalPath: string, expectedKind: "file" | "directory"): void {
+  if (!fs.existsSync(finalPath)) {
+    return;
+  }
+  const stat = fs.lstatSync(finalPath);
+  if (stat.isSymbolicLink()) {
+    throw new Error(`Refusing to overwrite symbolic link: ${path.basename(finalPath)}`);
+  }
+  if (expectedKind === "file" && !stat.isFile()) {
+    throw new Error(`Output path exists and is not a file: ${path.basename(finalPath)}`);
+  }
+  if (expectedKind === "directory" && !stat.isDirectory()) {
+    throw new Error(`Output path exists and is not a directory: ${path.basename(finalPath)}`);
+  }
+}
+
+export function createTempOutputDirectory(finalDir: string): string {
+  assertExistingOutputKind(finalDir, "directory");
+  return fs.mkdtempSync(hiddenTempName(finalDir, "tmpdir-"));
+}
+
+export function replaceOutputPath(tempPath: string, finalPath: string, expectedKind: "file" | "directory"): void {
+  assertExistingOutputKind(finalPath, expectedKind);
+  const backupPath = fs.existsSync(finalPath) ? hiddenTempName(finalPath, "backup") : undefined;
+  if (backupPath) {
+    fs.renameSync(finalPath, backupPath);
+  }
+
+  try {
+    fs.renameSync(tempPath, finalPath);
+  } catch (error) {
+    if (backupPath && fs.existsSync(backupPath) && !fs.existsSync(finalPath)) {
+      fs.renameSync(backupPath, finalPath);
+    }
+    throw error;
+  }
+
+  if (backupPath && fs.existsSync(backupPath)) {
+    fs.rmSync(backupPath, { recursive: true, force: true });
+  }
+}
+
+export function discardTempOutput(tempPath: string): void {
+  if (fs.existsSync(tempPath)) {
+    fs.rmSync(tempPath, { recursive: true, force: true });
+  }
+}
+
+export function writeFileAtomically(finalPath: string, data: string | Buffer, encoding?: BufferEncoding): void {
+  assertExistingOutputKind(finalPath, "file");
+  const tempPath = hiddenTempName(finalPath, "tmpfile");
+  if (typeof data === "string") {
+    fs.writeFileSync(tempPath, data, encoding || "utf8");
+  } else {
+    fs.writeFileSync(tempPath, data);
+  }
+  replaceOutputPath(tempPath, finalPath, "file");
+}
+
 function hasUriScheme(value: string): boolean {
   return /^[A-Za-z][A-Za-z0-9+.-]*:/.test(value);
 }

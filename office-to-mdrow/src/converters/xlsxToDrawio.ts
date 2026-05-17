@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as path from "path";
 import AdmZip = require("adm-zip");
 import {
@@ -15,6 +14,7 @@ import {
   resolvePackagePath,
   round,
   textContent,
+  writeFileAtomically,
   xmlEscape
 } from "./shared";
 
@@ -33,7 +33,7 @@ type Dict = XlsxDict;
 export async function convertXlsxToDrawio(sourcePath: string): Promise<string> {
   const drawioPath = path.join(path.dirname(sourcePath), `${path.parse(sourcePath).name}.drawio`);
   const intermediate = buildXlsxIntermediate(sourcePath);
-  fs.writeFileSync(drawioPath, makeDrawio(intermediate), "utf8");
+  writeFileAtomically(drawioPath, makeDrawio(intermediate), "utf8");
   return drawioPath;
 }
 
